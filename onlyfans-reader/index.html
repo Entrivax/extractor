@@ -307,8 +307,8 @@ background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAEFAAABBQCAMA
                                 return {
                                     id: media.id,
                                     type: media.type,
-                                    preview: media.preview,
-                                    full: media.full,
+                                    preview: cleanLink(media.preview),
+                                    full: cleanLink(media.full),
                                 }
                             }),
                             postedAt: moment(p.postedAt).format('lll'),
