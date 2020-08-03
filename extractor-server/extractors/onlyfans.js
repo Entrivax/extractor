@@ -76,13 +76,17 @@
         console.log("Filter links of files to download")
         let files = []
         addFile(creator.avatar)
-        Object.keys(creator.avatarThumbs).forEach((a) => {
-            addFile(creator.avatarThumbs[a])
-        })
+        if (creator.avatarThumbs) {
+            Object.keys(creator.avatarThumbs).forEach((a) => {
+                addFile(creator.avatarThumbs[a])
+            })
+        }
         addFile(creator.header)
-        Object.keys(creator.headerThumbs).forEach((h) => {
-            addFile(creator.headerThumbs[h])
-        })
+        if (creator.headerThumbs) {
+            Object.keys(creator.headerThumbs).forEach((h) => {
+                addFile(creator.headerThumbs[h])
+            })
+        }
         data.forEach(d => {
             d.media.forEach(m => {
                 if (m.files) {
