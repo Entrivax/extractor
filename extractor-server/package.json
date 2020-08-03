@@ -1,0 +1,19 @@
+{
+  "name": "extractor-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "archiver": "^5.0.0",
+    "axios": "^0.19.2",
+    "express": "^4.17.1",
+    "moment": "^2.27.0",
+    "ws": "^7.3.1"
+  }
+}
