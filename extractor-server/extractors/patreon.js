@@ -119,13 +119,30 @@
         }
     
         for (let includedObj of included) {
-            if (includedObj.type === 'media' && includedObj.attributes) {
-                if (includedObj.attributes.download_url) {
-                    addFile(includedObj.attributes.download_url)
-                }
-                if (includedObj.attributes.image_urls) {
-                    for (let image in includedObj.attributes.image_urls) {
-                        addFile(includedObj.attributes.image_urls[image])
+            if (includedObj.attributes) {
+                if (includedObj.type === 'media') {
+                    if (includedObj.attributes.download_url) {
+                        addFile(includedObj.attributes.download_url)
+                    }
+                    if (includedObj.attributes.image_urls) {
+                        for (let image in includedObj.attributes.image_urls) {
+                            addFile(includedObj.attributes.image_urls[image])
+                        }
+                    }
+                } else if (includedObj.type === 'user') {
+                    if (includedObj.attributes.image_url) {
+                        addFile(includedObj.attributes.image_url)
+                    }
+                } else if (includedObj.type === 'attachment') {
+                    if (includedObj.attributes.url) {
+                        addFile(includedObj.attributes.url)
+                    }
+                } else if (includedObj.type === 'goal') {
+                    if (includedObj.attributes.description) {
+                        const images = getImagesFromHtmlString(includedObj.attributes.description)
+                        for (let i = 0; i < images.length; i++) {
+                            addFile(images[i])
+                        }
                     }
                 }
             }
@@ -150,6 +167,28 @@
             }
         }
         console.log(`Downloading finished ${files.length}/${files.length} (100%)`)
+    }
+
+    function getImagesFromHtmlString(strDoc) {
+        let images = []
+        try {
+            const parser = new DOMParser()
+            const htmlDoc = parser.parseFromString(strDoc, 'text/html')
+            const imgs = htmlDoc.querySelectorAll('img')
+            for (let i = 0; i < imgs.length; i++) {
+                const el = imgs[i]
+                if (!el.hasAttribute('src')) {
+                    return
+                }
+                const link = el.getAttribute('src')
+                if (link != null && images.indexOf(link) === -1) {
+                    images.push(f)
+                }
+            }
+        } catch (err) {
+            console.warn(`Error while parsing post content :`, err)
+        }
+        return images
     }
 
     async function downloadFile(ws, zipId, url) {
