@@ -2,6 +2,11 @@
 
 Pack of scripts to extract data from Patreon or OnlyFans.
 
+## Requirements
+You'll need to have Node.js installed along with npm.
+
+Tested with Node 12.
+
 ## Setup
 ```sh
 # Install node_modules
