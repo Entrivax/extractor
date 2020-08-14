@@ -132,6 +132,13 @@
                 background-color: var(--bg-color);
             }
 
+            .avatar {
+                border-color: #fff;
+            }
+            .dark-mode .avatar {
+                border-color: var(--dark-mode-bg-color);
+            }
+
             .progress {
                 background-color: rgba(0, 175, 240, 0.12);
                 z-index: -1;
@@ -236,7 +243,7 @@
         <template id="creator-card">
             <div class="-mt-8 px-4" if.bind="creatorCardInfo != null">
                 <div>
-                    <div class="rounded-full w-100px h-100px border-2 border-white bg-cover bg-center avatar" style.bind="{ 'background-image': creatorCardInfo.avatarUrl ? ('url(' + creatorCardInfo.avatarUrl + ')') : undefined }"></div>
+                    <div class="rounded-full w-100px h-100px border-2 bg-cover bg-center avatar" style.bind="{ 'background-image': creatorCardInfo.avatarUrl ? ('url(' + creatorCardInfo.avatarUrl + ')') : undefined }"></div>
                 </div>
                 <div class="mt-3 mb-6">
                     <div class="mb-4">
