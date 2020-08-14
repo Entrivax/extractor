@@ -131,6 +131,19 @@
             .dark-mode .color-mode-switch .color-mode {
                 background-color: var(--bg-color);
             }
+
+            .progress {
+                background-color: rgba(0, 175, 240, 0.12);
+                z-index: -1;
+            }
+
+            .poll, .poll > div {
+                border-color: rgba(138,150,163,0.2);
+            }
+
+            .poll-data {
+                background-color: rgba(138, 150, 163, 0.08);
+            }
         </style>
         <style>
             /**
@@ -264,6 +277,21 @@
                     <image-post if.bind="post.mediaType === 'photo'" post.bind="post" creator.bind="creator"></image-post>
                     <video-post if.bind="post.mediaType === 'video'" post.bind="post" creator.bind="creator"></video-post>
 
+                    <div if.bind="post.hasVoting" class="my-4 border rounded poll">
+                        <div repeat.for="option of post.voting.options" class="border-b">
+                            <div class="relative m-2">
+                                <div class="absolute inset-y-0 left-0 rounded-md progress" style.bind="{ width: (100 * option.count / $parent.post.voting.total) + '%' }"></div>
+                                <div class="flex justify-between px-4 py-1 text-sm font-medium ${!option.isVoted ? 'text-gray-600' : ''}">
+                                    <div>${option.name}</div>
+                                    <div>${option.count}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="poll-data px-4 py-2 text-sm text-gray-600">
+                            ${ post.voting.total } vote${ post.voting.total !== 1 ? 's' : ''}
+                        </div>
+                    </div>
+
                     <div class="text-sm mt-4 px-4 md:px-0">
                         <span class="font-medium">${post.favoritesCount}</span> like${post.favoritesCount != 1 ? 's' : ''}
                         <span if.bind="post.tipsAmount"> • <span class="font-medium">${post.tipsAmount}</span> tips</span>
@@ -350,6 +378,8 @@
                                     full: cleanLink(media.full),
                                 }
                             }),
+                            hasVoting: p.hasVoting,
+                            voting: { ...p.voting },
                             postedAt: moment(p.postedAt).format('lll'),
                             commentsCount: p.commentsCount,
                             favoritesCount: p.favoritesCount,
