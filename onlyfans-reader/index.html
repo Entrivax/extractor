@@ -336,9 +336,9 @@
             <a if.bind="media[0].type === 'photo'" class="w-full" href.bind="media[0].full" target="_blank">
                 <img class="w-full post-image ${ media.length !== 1 ? 'md:rounded-md' : 'md:rounded-t-md' }" src.bind="media[0].preview">
             </a>
-            <div if.bind="media[0].type === 'video'" class="relative overflow-hidden ${ media.length !== 1 ? 'md:rounded-md' : 'md:rounded-t-md' }">
+            <div if.bind="media[0].type === 'video' || media[0].type === 'gif'" class="relative overflow-hidden ${ media.length !== 1 ? 'md:rounded-md' : 'md:rounded-t-md' }">
                 <div class="absolute bg-cover blur-filter" style.bind="{ 'background-image': 'url(' + media[0].preview + ')', 'z-index': '-1' }"></div>
-                <video class="w-full" poster.bind="media[0].preview" src.bind="media[0].full" controls></video>
+                <video class="w-full" poster.bind="media[0].preview" src.bind="media[0].full" loop.bind="media[0].type === 'gif' ? 'loop' : undefined" controls></video>
             </div>
             <div class="thumbnails-carousel mt-1 pb-1" if.bind="media.length > 1">
                 <a repeat.for="image of media | from: 1" href.bind="image.full" target="_blank">
