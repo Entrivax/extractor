@@ -514,8 +514,8 @@
         function MediaDisplay() {}
         MediaDisplay.prototype.postChanged = function() {
             this.media = this.post.canViewMedia ? this.post.media : this.post.media.filter(media => this.post.preview.indexOf(media.id) !== -1)
-            this.imagesCount = this.post.media.filter(media => media.type === 'photo').length
-            this.videoDuration = this.post.media.filter(media => media.type === 'video').reduce((a, b) => a + b.source.duration, 0)
+            this.imagesCount = this.post.media.filter(media => media.type === 'photo' && this.post.preview.indexOf(media.id) === -1).length
+            this.videoDuration = this.post.media.filter(media => media.type === 'video' && this.post.preview.indexOf(media.id) === -1).reduce((a, b) => a + b.source.duration, 0)
         }
         MediaDisplay.$view = {
             template: au.FEATURE.ensureHTMLTemplateElement(document.querySelector('#media-display')),
