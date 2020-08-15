@@ -306,7 +306,7 @@
                             </div>
                             <div class="flex justify-between">
                                 <div class="text-gray-600 text-sm">@${ creator.username }</div>
-                                <div if.bind="post.price != null" class="text-gray-600 opacity-75 text-sm">$${ post.price }</div>
+                                <div if.bind="post.price != null" class="text-gray-600 opacity-75 text-sm">${ `${ post.canViewMedia ? 'Purchased for ' : '' }$${ post.price }` }</div>
                             </div>
                         </div>
                     </div>
