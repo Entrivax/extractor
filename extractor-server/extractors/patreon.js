@@ -214,20 +214,62 @@
                 })
                 files.push(zipUrl)
 
-                await appendFile(ws, zipId, zipUrl, _arrayBufferToBase64(response), true)
+                var responseLength = new Uint8Array(response).byteLength;
+                if (responseLength > 500000) {
+                    const { fileId } = await openFileStream(ws, zipId, zipUrl)
+                    const chunkSize = 500000
+                    let offset = 0
+                    while (offset < responseLength) {
+                        await appendToFileStream(ws, fileId, _arrayBufferToBase64(response, offset, chunkSize), true)
+                        offset += chunkSize
+                    }
+                    await closeFileStream(ws, fileId)
+                } else {
+                    await appendFile(ws, zipId, zipUrl, _arrayBufferToBase64(response, 0, responseLength), true)
+                }
             }
         }
         return zipUrl
 
-        function _arrayBufferToBase64(buffer) {
+        function _arrayBufferToBase64(buffer, start, length) {
             var binary = '';
             var bytes = new Uint8Array(buffer);
-            var len = bytes.byteLength;
-            for (var i = 0; i < len; i++) {
+            var len = Math.min(bytes.byteLength, start + length);
+            for (var i = start; i < len; i++) {
                 binary += String.fromCharCode(bytes[i]);
             }
             return window.btoa(binary);
         }
+    }
+
+    function openFileStream(ws, zipId, filePath) {
+        return new Promise((resolve) => {
+            sendMessage(ws, {
+                type: 'open-file-stream',
+                id: zipId,
+                file: filePath
+            }, (data) => resolve(data))
+        })
+    }
+
+    function appendToFileStream(ws, fileId, fileData, isBase64) {
+        return new Promise((resolve) => {
+            sendMessage(ws, {
+                type: 'append-to-file-stream',
+                id: fileId,
+                isBase64: !!isBase64,
+                content: fileData
+            }, (data) => resolve(data))
+        })
+    }
+
+    function closeFileStream(ws, fileId) {
+        return new Promise((resolve) => {
+            sendMessage(ws, {
+                type: 'close-file-stream',
+                id: fileId
+            }, (data) => resolve(data))
+        })
     }
 
     function appendFileFromUrl(ws, zipId, filePath, url) {

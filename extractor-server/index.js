@@ -5,6 +5,7 @@ const express = require('express')
 const fs = require('fs')
 const archiver = require('archiver')
 const moment = require('moment')
+const Readable = require('stream').Readable
 
 const app = express()
 const server = http.createServer(app)
@@ -15,6 +16,10 @@ const wss = new WebSocket.Server({ server })
  * @type {{[id: string]: archiver.Archiver}}
  */
 const zipHandles = {}
+/**
+ * @type {{[id: string]: Readable}}
+ */
+const fileHandles = {}
 
 wss.on('connection', (ws) => {
     ws.isAlive = true;
@@ -59,6 +64,64 @@ wss.on('connection', (ws) => {
                 else {
                     zipHandles[parsedMessage.id].append(Buffer.from(parsedMessage.content), { name: parsedMessage.file })
                 }
+                ws.send(JSON.stringify({
+                    type: parsedMessage.type + '_response',
+                    requestId: parsedMessage.requestId
+                }))
+                break
+            case 'open-file-stream':
+                if (zipHandles[parsedMessage.id] == null) {
+                    ws.send(JSON.stringify({
+                        type: parsedMessage.type + '_response',
+                        requestId: parsedMessage.requestId,
+                        error: 'zip_not_exists'
+                    }))
+                    break
+                }
+                let fileId = generateId()
+                while (fileHandles[fileId] != undefined) {
+                    fileId = generateId()
+                }
+                fileHandles[fileId] = new Readable()
+                fileHandles[fileId]._read = function noop() { }
+                zipHandles[parsedMessage.id].append(fileHandles[fileId], { name: parsedMessage.file })
+                ws.send(JSON.stringify({
+                    type: parsedMessage.type + '_response',
+                    requestId: parsedMessage.requestId,
+                    fileId: fileId
+                }))
+                break
+            case 'append-to-file-stream':
+                if (fileHandles[parsedMessage.id] == null) {
+                    ws.send(JSON.stringify({
+                        type: parsedMessage.type + '_response',
+                        requestId: parsedMessage.requestId,
+                        error: 'file_not_exists'
+                    }))
+                    break
+                }
+                if (parsedMessage.isBase64) {
+                    fileHandles[parsedMessage.id].push(parsedMessage.content, 'base64')
+                }
+                else {
+                    fileHandles[parsedMessage.id].append(parsedMessage.content)
+                }
+                ws.send(JSON.stringify({
+                    type: parsedMessage.type + '_response',
+                    requestId: parsedMessage.requestId
+                }))
+                break
+            case 'close-file-stream':
+                if (fileHandles[parsedMessage.id] == null) {
+                    ws.send(JSON.stringify({
+                        type: parsedMessage.type + '_response',
+                        requestId: parsedMessage.requestId,
+                        error: 'file_not_exists'
+                    }))
+                    break
+                }
+                fileHandles[parsedMessage.id].push(null)
+                delete fileHandles[parsedMessage.id]
                 ws.send(JSON.stringify({
                     type: parsedMessage.type + '_response',
                     requestId: parsedMessage.requestId
