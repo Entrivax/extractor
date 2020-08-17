@@ -1,4 +1,5 @@
 const path = require('path');
+const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
@@ -138,6 +139,7 @@ module.exports = ({ production } = {}, { extractCss, analyze, tests, hmr, port, 
     },
     plugins: [
         ...when(!tests, new DuplicatePackageCheckerPlugin()),
+        new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
         new AureliaPlugin(),
         new ModuleDependenciesPlugin({
             'aurelia-testing': ['./compile-spy', './view-spy']

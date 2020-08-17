@@ -48,7 +48,7 @@ Now, a file named `patreon_{date}_{random_id}.zip` should exist in the `extracto
 
 To read the backup:
 1. Extract the backup zip file in an empty folder
-1. Copy the file `index.html` from the `readers/patreon-reader` directory to the folder used for step 1
+1. Copy the file `index.html` from the `readers/patreon/build` directory to the folder used for step 1
 1. Double click on the copied `index.html` file
 
 WARNING: The script was only tested when logged and subcribed to the user.

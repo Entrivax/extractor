@@ -1,0 +1,121 @@
+@import "tailwindcss/base";
+
+@import "tailwindcss/components";
+
+@import "tailwindcss/utilities";
+
+@import "./fonts.scss";
+
+html, body {
+    font-family: 'Roboto', sans-serif;
+    min-height: 100%;
+    height: 100%;
+}
+.cover {
+    height: 25vw;
+    min-height: 10rem;
+}
+
+.thumbnails-carousel {
+    display: flex;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.thumbnails-carousel > a:not(:last-child) {
+    margin-right: 0.25rem;
+}
+
+.translate-y-30p {
+    transform: translateY(30%);
+}
+
+p {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: rgba(134, 134, 134, 0.4);
+}
+
+.progress {
+    background-color: rgb(227, 239, 250);
+    z-index: -1;
+}
+.checkbox {
+    border: 1px solid #e2e8f0;
+    width: 1.5em;
+    height: 1.5em;
+}
+.checkbox.checked {
+    border-width: 0px;
+    background-size: 1em;
+    background-position: center;
+    background-color: #000;
+    background-repeat: no-repeat;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath fill='%23fff' d='M8 2.198c0 .137-.048.254-.145.351L3.417 6.987c-.097.097-.214.145-.351.145-.138 0-.255-.048-.351-.145l-2.57-2.57C.048 4.321 0 4.204 0 4.066c0-.137.048-.254.145-.351l.702-.702c.096-.096.213-.144.35-.144.138 0 .255.048.351.144l1.518 1.523 3.386-3.391c.096-.096.213-.145.351-.145.137 0 .254.049.35.145l.702.702c.097.096.145.213.145.351'%3E%3C/path%3E%3C/svg%3E");
+}
+
+/** Class used on iframe of YouTube videos embed */
+.embedly-embed {
+    max-width: 100%;
+}
+
+/**
+ * Spinner from https://tobiasahlin.com/spinkit/
+ */
+.spinner {
+    width: 40px;
+    height: 40px;
+
+    position: relative;
+}
+
+.double-bounce1,
+.double-bounce2 {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-color: #18b8f0;
+    opacity: 0.6;
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    -webkit-animation: sk-bounce 2s infinite ease-in-out;
+    animation: sk-bounce 2s infinite ease-in-out;
+}
+
+.double-bounce2 {
+    -webkit-animation-delay: -1s;
+    animation-delay: -1s;
+}
+
+@-webkit-keyframes sk-bounce {
+    0%,
+    100% {
+        -webkit-transform: scale(0);
+    }
+    50% {
+        -webkit-transform: scale(1);
+    }
+}
+
+@keyframes sk-bounce {
+    0%,
+    100% {
+        transform: scale(0);
+        -webkit-transform: scale(0);
+    }
+    50% {
+        transform: scale(1);
+        -webkit-transform: scale(1);
+    }
+}

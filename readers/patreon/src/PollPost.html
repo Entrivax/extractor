@@ -1,0 +1,28 @@
+<template>
+    <div class="border rounded-sm border-gray-300 w-100">
+        <div class="p-4">
+            <div class="text-gray-600 text-sm">${ post.attributes.published_at }</div>
+            <div class="text-xl font-bold">${ post.attributes.title }</div>
+            <div if.bind="post.attributes.content" innerhtml.bind="post.attributes.content"></div>
+
+            <div>
+                <div repeat.for="choice of post.attributes.poll.attributes.choices" class="mb-4 flex items-center">
+                    <div class="checkbox rounded mr-2 ${choice.attributes.isSelected ? 'checked' : ''}"></div>
+                    <div class="flex-grow pl-4 py-2 pr-2 mr-2 rounded border border-gray-300 relative">
+                        <div class="absolute inset-y-0 left-0 progress" style.bind="{ width: (100 * choice.attributes.num_responses / $parent.post.attributes.poll.attributes.num_responses) + '%' }"></div>
+                        ${ choice.attributes.text_content }
+                    </div>
+                    <div class="w-12">
+                        ${ choice.attributes.num_responses }
+                    </div>
+                </div>
+                <div class="text-gray-600 text-sm">${ post.attributes.poll.attributes.num_responses } vote${post.attributes.poll.attributes.num_responses !== 1 ? 's' : ''} total</div>
+            </div>
+
+            <div if.bind="post.attributes.comment_count || post.attributes.like_count" class="flex pt-4 text-gray-600 text-sm">
+                <div class="mr-4" if.bind="post.attributes.comment_count">${post.attributes.comment_count} Comment${post.attributes.comment_count > 1 ? 's' : ''}</div>
+                <div if.bind="post.attributes.like_count">${post.attributes.like_count} Like${post.attributes.like_count > 1 ? 's' : ''}</div>
+            </div>
+        </div>
+    </div>
+</template>

@@ -1,0 +1,20 @@
+<template>
+    <div class="border rounded-b-sm border-gray-300 w-100">
+        <div if.bind="!showEmbed" class="cursor-pointer relative" click.trigger="showEmbed = true">
+            <img class="w-full" src.bind="post.attributes.image.attributes.image_urls.default">
+            <div class="absolute inset-0 opacity-25 bg-black"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-white text-5xl">►</div>
+        </div>
+        <div if.bind="showEmbed" class="w-full" innerhtml.bind="post.attributes.embed.html"></div>
+        <div class="p-4">
+            <div class="text-gray-600 text-sm">${ post.attributes.published_at }</div>
+            <div class="text-xl font-bold">${ post.attributes.title }</div>
+            <div if.bind="post.attributes.content" innerhtml.bind="post.attributes.content"></div>
+
+            <div if.bind="post.attributes.comment_count || post.attributes.like_count" class="flex pt-4 text-gray-600 text-sm">
+                <div class="mr-4" if.bind="post.attributes.comment_count">${post.attributes.comment_count} Comment${post.attributes.comment_count > 1 ? 's' : ''}</div>
+                <div if.bind="post.attributes.like_count">${post.attributes.like_count} Like${post.attributes.like_count > 1 ? 's' : ''}</div>
+            </div>
+        </div>
+    </div>
+</template>

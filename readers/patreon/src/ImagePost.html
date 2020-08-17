@@ -1,0 +1,22 @@
+<template>
+    <div class="border rounded-b-sm border-gray-300 w-100">
+        <a class="w-full" href.bind="post.attributes.image.attributes.image_urls.original" target="_blank">
+            <img class="w-full" src.bind="post.attributes.image.attributes.image_urls.default">
+        </a>
+        <div class="thumbnails-carousel mt-1 pb-1" if.bind="post.attributes.images && post.attributes.images.length > 1">
+            <a repeat.for="image of post.attributes.images | from: 1" href.bind="image.attributes.image_urls.original" target="_blank">
+                <img class="w-auto h-32 max-w-none" src.bind="image.attributes.image_urls.thumbnail">
+            </a>
+        </div>
+        <div class="p-4">
+            <div class="text-gray-600 text-sm">${ post.attributes.published_at }</div>
+            <div class="text-xl font-bold">${ post.attributes.title }</div>
+            <div if.bind="post.attributes.content" innerhtml.bind="post.attributes.content"></div>
+
+            <div if.bind="post.attributes.comment_count || post.attributes.like_count" class="flex pt-4 text-gray-600 text-sm">
+                <div class="mr-4" if.bind="post.attributes.comment_count">${post.attributes.comment_count} Comment${post.attributes.comment_count > 1 ? 's' : ''}</div>
+                <div if.bind="post.attributes.like_count">${post.attributes.like_count} Like${post.attributes.like_count > 1 ? 's' : ''}</div>
+            </div>
+        </div>
+    </div>
+</template>

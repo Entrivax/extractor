@@ -1,0 +1,13 @@
+<template>
+    <require from="./ImagePost"></require>
+    <require from="./VideoPost"></require>
+    <require from="./PollPost"></require>
+    <require from="./TextPost"></require>
+
+    <div class="mb-6">
+        <image-post if.bind="post.attributes.post_type === 'image_file'" post.bind="post"></image-post>
+        <video-post if.bind="post.attributes.post_type === 'video_embed'" post.bind="post"></video-post>
+        <poll-post if.bind="post.attributes.post_type === 'poll'" post.bind="post"></poll-post>
+        <text-post if.bind="post.attributes.post_type !== 'image_file' && post.attributes.post_type !== 'video_embed' && post.attributes.post_type !== 'poll'" post.bind="post"></text-post>
+    </div>
+</template>

@@ -1,0 +1,18 @@
+<template>
+    <require from="./style.scss"></require>
+    <require from="./Banner"></require>
+    <require from="./Cover"></require>
+    <require from="./Post"></require>
+
+    <div if.bind="!noData">
+        <cover cover-url.bind="coverUrl" avatar-url.bind="avatarUrl"></cover>
+        <banner data.bind="bannerData"></banner>
+        <div class="posts w-1/2 mx-auto" if.bind="posts != null">
+            <post post.bind="post" repeat.for="post of posts"></post>
+        </div>
+    </div>
+    <div if.bind="noData" class="h-full w-full flex flex-col justify-center items-center">
+        <h1 class="text-2xl font-bold mb-2">Unable to read data from data.json.js file</h1>
+        <div class="text-gray-600">Check if the file is present in the same directory, else, check the console for any error.</div>
+    </div>
+</template>
