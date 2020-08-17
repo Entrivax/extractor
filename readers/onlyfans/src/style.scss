@@ -1,0 +1,255 @@
+@import "tailwindcss/base";
+
+@import "tailwindcss/components";
+
+@import "tailwindcss/utilities";
+
+@import "./fonts.scss";
+
+:root {
+    --text-color: #242529;
+    --bg-color: #fff;
+    --dark-mode-text-color: #f6f7f8;
+    --dark-mode-bg-color: #161618;
+}
+
+html,
+body {
+    font-family: "Roboto", sans-serif;
+    min-height: 100%;
+    height: 100%;
+}
+body {
+    color: var(--text-color);
+    background: var(--bg-color);
+
+    &.dark-mode {
+        color: var(--dark-mode-text-color);
+        background: var(--dark-mode-bg-color);
+    }
+}
+.cover {
+    height: 25vw;
+    min-height: 10rem;
+    max-height: 204px;
+
+    & > div {
+        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(138, 150, 163, 0));
+    }
+}
+
+image-post .post-image {
+    max-height: calc(100vh - 100px);
+    object-fit: cover;
+}
+
+video-post video {
+    max-height: calc(100vh - 100px);
+}
+
+post {
+    display: block;
+
+    &:not(:last-child) {
+        border-bottom-width: 1px;
+        border-color: rgba(138, 150, 163, 0.2);
+        margin-bottom: 1.5rem;
+    }
+}
+
+.thumbnails-carousel {
+    display: flex;
+    max-width: 100%;
+    overflow-x: auto;
+
+    & > a:not(:last-child) {
+        margin-right: 0.25rem;
+    }
+}
+
+.w-100px {
+    width: 100px;
+}
+.h-100px {
+    height: 100px;
+}
+
+.w-50px {
+    width: 50px;
+}
+.h-50px {
+    height: 50px;
+}
+
+p {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: rgba(134, 134, 134, 0.4);
+}
+
+.blur-filter {
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    filter: blur(5px) opacity(80%);
+}
+
+.verified-icon {
+    display: inline-block;
+    height: 1rem;
+    width: 1rem;
+    vertical-align: middle;
+    fill: currentColor;
+}
+
+.info-icon {
+    height: 1em;
+    width: 1em;
+}
+
+.color-mode-switch {
+    position: fixed;
+    top: 3em;
+    right: 0;
+    width: 2em;
+    height: 2em;
+    border-top-left-radius: 0.25em;
+    border-bottom-left-radius: 0.25em;
+    padding: 0.3em;
+    cursor: pointer;
+    border: 1px solid rgba(138, 150, 163, 0.2);
+    border-right-width: 0px;
+    background-color: var(--bg-color);
+}
+.color-mode-switch .color-mode {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: var(--dark-mode-bg-color);
+}
+
+.avatar {
+    border-color: #fff;
+}
+
+.dark-mode {
+    .color-mode-switch {
+        background-color: var(--dark-mode-bg-color);
+    }
+    .color-mode-switch .color-mode {
+        background-color: var(--bg-color);
+    }
+    .dark-mode .avatar {
+        border-color: var(--dark-mode-bg-color);
+    }
+}
+
+.progress {
+    background-color: rgba(0, 175, 240, 0.12);
+    z-index: -1;
+}
+
+.poll,
+.poll > div {
+    border-color: rgba(138, 150, 163, 0.2);
+}
+
+.border-color {
+    border-color: rgba(138, 150, 163, 0.2);
+}
+
+.poll-data {
+    background-color: rgba(138, 150, 163, 0.08);
+}
+
+.inline-list > span:not(:first-child):before {
+    content: " • ";
+}
+
+.bg-cyan-of {
+    background-color: #00aff0;
+}
+
+/**
+ * Spinner from https://tobiasahlin.com/spinkit/
+ */
+.spinner {
+    width: 40px;
+    height: 40px;
+
+    position: relative;
+}
+
+.double-bounce1,
+.double-bounce2 {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-color: #18b8f0;
+    opacity: 0.6;
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    -webkit-animation: sk-bounce 2s infinite ease-in-out;
+    animation: sk-bounce 2s infinite ease-in-out;
+}
+
+.double-bounce2 {
+    -webkit-animation-delay: -1s;
+    animation-delay: -1s;
+}
+
+@-webkit-keyframes sk-bounce {
+    0%,
+    100% {
+        -webkit-transform: scale(0);
+    }
+    50% {
+        -webkit-transform: scale(1);
+    }
+}
+
+@keyframes sk-bounce {
+    0%,
+    100% {
+        transform: scale(0);
+        -webkit-transform: scale(0);
+    }
+    50% {
+        transform: scale(1);
+        -webkit-transform: scale(1);
+    }
+}
+
+.avatar {
+    background-image: url('./assets/onlyfans avatar.svg');
+}
+
+.dark-mode .cover-image {
+    background-image: url('./assets/onlyfans default header-dark.svg');
+}
+
+.cover-image {
+    background-image: url('./assets/onlyfans default header.svg')
+}
+
+.background-image {
+    background-image: url('./assets/onlyfans background.svg');
+}
+
+.dark-mode .background-image {
+    background-image: url('./assets/onlyfans background-dark.svg');
+}
+
+@import './assets/emojis.scss';

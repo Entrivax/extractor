@@ -1,0 +1,52 @@
+<template>
+    <require from="./MediaDisplay"></require>
+
+    <div>
+        <div class="pb-4 w-100">
+            <div class="mb-3 flex px-4 md:px-0">
+                <div class="h-50px w-50px rounded-full mr-4 bg-cover bg-center avatar" style.bind="{ 'background-image': creator.avatarUrl ? ('url(' + creator.avatarUrl + ')') : undefined }"></div>
+                <div class="flex-grow">
+                    <div class="flex justify-between">
+                        <div class="font-medium">
+                            ${ creator.name }
+                            <span if.bind="creator.isVerified" class="verified-icon">
+                                <svg viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path fill-rule="evenodd" d="M10.273 2.513l-.921-.944.715-.698.622.637.89-.011a2.89 2.89 0 0 1 2.924 2.924l-.01.89.636.622a2.89 2.89 0 0 1 0 4.134l-.637.622.011.89a2.89 2.89 0 0 1-2.924 2.924l-.89-.01-.622.636a2.89 2.89 0 0 1-4.134 0l-.622-.637-.89.011a2.89 2.89 0 0 1-2.924-2.924l.01-.89-.636-.622a2.89 2.89 0 0 1 0-4.134l.637-.622-.011-.89a2.89 2.89 0 0 1 2.924-2.924l.89.01.622-.636a2.89 2.89 0 0 1 4.134 0l-.715.698a1.89 1.89 0 0 0-2.704 0l-.92.944-1.32-.016a1.89 1.89 0 0 0-1.911 1.912l.016 1.318-.944.921a1.89 1.89 0 0 0 0 2.704l.944.92-.016 1.32a1.89 1.89 0 0 0 1.912 1.911l1.318-.016.921.944a1.89 1.89 0 0 0 2.704 0l.92-.944 1.32.016a1.89 1.89 0 0 0 1.911-1.912l-.016-1.318.944-.921a1.89 1.89 0 0 0 0-2.704l-.944-.92.016-1.32a1.89 1.89 0 0 0-1.912-1.911l-1.318.016z"/>
+                                    <path fill-rule="evenodd" d="M10.354 6.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7 8.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="text-gray-600 text-sm">${ post.postedAt }</div>
+                    </div>
+                    <div class="flex justify-between">
+                        <div class="text-gray-600 text-sm">@${ creator.username }</div>
+                        <div if.bind="post.price != null" class="text-gray-600 opacity-75 text-sm">${ `${ post.canViewMedia ? 'Purchased for ' : '' }$${ post.price }` }</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3 px-4 md:px-0 text-sm" if.bind="post.content" innerhtml.bind="post.content"></div>
+
+            <media-display post.bind="post" creator.bind="creator"></media-display>
+
+            <div if.bind="post.hasVoting" class="my-4 border rounded poll">
+                <div repeat.for="option of post.voting.options" class="border-b">
+                    <div class="relative m-2">
+                        <div class="absolute inset-y-0 left-0 rounded-md progress" style.bind="{ width: (100 * option.count / $parent.post.voting.total) + '%' }"></div>
+                        <div class="flex justify-between px-4 py-1 text-sm font-medium ${!option.isVoted ? 'text-gray-600' : ''}">
+                            <div>${ option.name }</div>
+                            <div>${ option.count }</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="poll-data px-4 py-2 text-sm text-gray-600">
+                    ${ post.voting.total } vote${ post.voting.total !== 1 ? 's' : ''}
+                </div>
+            </div>
+
+            <div class="text-sm mt-4 px-4 md:px-0">
+                <span class="font-medium">${ post.favoritesCount }</span> like${ post.favoritesCount != 1 ? 's' : '' }
+                <span if.bind="post.tipsAmount"> • <span class="font-medium">${ post.tipsAmount }</span> tips</span>
+            </div>
+        </div>
+    </div>
+</template>

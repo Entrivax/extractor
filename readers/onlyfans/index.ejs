@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>OnlyFans</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg width='128' height='128' xmlns='http://www.w3.org/2000/svg' fill-rule='evenodd' clip-rule='evenodd' stroke-linecap='round' stroke-linejoin='round' stroke-miterlimit='1.5'%3E%3Cpath d='M128 32c0-17.662-14.34-32-32-32H32C14.339 0 0 14.338 0 32v64c0 17.66 14.339 31.999 32 31.999h64c17.66 0 32-14.339 32-32V32z' fill='%230bb4ef'/%3E%3Ccircle cx='64.407' cy='63.756' r='48.956' fill='none' stroke='%23fff' stroke-width='4.16' transform='translate(-.465 .186) scale(1.00091)'/%3E%3Cpath d='M62.378 70.554L52.144 60.96l-2.217 2.365L64 76.517l14.07-13.193-2.216-2.363-10.233 9.595V35.67h-3.243v34.883z' fill='%23fff'/%3E%3Cpath d='M84.628 88.326H43.364V47.06h15.202v3.128H46.491v35.01h35.01v-35.01H69.425V47.06h15.203v41.265z' fill='%23fff'/%3E%3C/svg%3E">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- imported CSS are concatenated and added automatically -->
+  </head>
+  <body aurelia-app="main">
+    <script>
+        let isDarkMode = localStorage.getItem('OnlyFans-backup-color-mode') === 'dark'
+        if (isDarkMode) {
+            document.body.classList.add('dark-mode')
+        }
+    </script>
+    <div class="h-full w-full flex flex-col justify-center items-center">
+        <div class="spinner">
+            <div class="double-bounce1"></div>
+            <div class="double-bounce2"></div>
+        </div>
+    </div>
+    <script src="./data.json.js" charset="UTF-8"></script>
+  </body>
+</html>
