@@ -1,0 +1,16 @@
+{
+  "name": "comparator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "patreon-comparator.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^4.1.0",
+    "yargs": "^15.4.1"
+  }
+}
