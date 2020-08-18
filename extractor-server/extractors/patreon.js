@@ -43,7 +43,12 @@
                 data.push(...responseObj.data)
             }
             if (responseObj.included) {
-                included.push(...responseObj.included)
+                for (let i = 0; i < responseObj.included.length; i++) {
+                    let objId = responseObj.included[i].id
+                    if (!included.find(i => i.id === objId)) {
+                        included.push(responseObj.included[i])
+                    }
+                }
             }
         }
 
