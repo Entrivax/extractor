@@ -73,6 +73,9 @@ export class App {
                 lastSeen: data.creator.lastSeen ? moment(data.creator.lastSeen).format('lll') : null,
                 about: data.creator.about,
                 currentSubscribePrice: data.creator.currentSubscribePrice,
+                location: data.creator.location,
+                website: data.creator.website,
+                wishlist: data.creator.wishlist,
             }
 
             document.title = `${data.creator.name} - OnlyFans Backup`
@@ -106,4 +109,7 @@ export type CreatorCardInfo = {
     lastSeen: string | null,
     about: string,
     currentSubscribePrice: number,
+    location?: string,
+    website?: string,
+    wishlist?: string,
 }
