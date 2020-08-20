@@ -72,6 +72,7 @@ export class App {
                 ...this.creator,
                 lastSeen: data.creator.lastSeen ? moment(data.creator.lastSeen).format('lll') : null,
                 about: data.creator.about,
+                currentSubscribePrice: data.creator.currentSubscribePrice,
             }
 
             document.title = `${data.creator.name} - OnlyFans Backup`
@@ -104,4 +105,5 @@ export type CreatorCardInfo = {
     isVerified: boolean,
     lastSeen: string | null,
     about: string,
+    currentSubscribePrice: number,
 }

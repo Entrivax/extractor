@@ -18,5 +18,15 @@
             </div>
             <div innerhtml.bind="creatorCardInfo.about"></div>
         </div>
+        <div class="my-6 border rounded p-4">
+            <div class="font-medium" if.bind="creatorCardInfo.currentSubscribePrice > 0">
+                Subscription
+                <span class="text-xl">$${ creatorCardInfo.currentSubscribePrice }</span>
+                per month
+            </div>
+            <div class="font-medium" else>
+                Free Subscription
+            </div>
+        </div>
     </div>
 </template>
