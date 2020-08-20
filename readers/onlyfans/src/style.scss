@@ -28,6 +28,11 @@ body {
         background: var(--dark-mode-bg-color);
     }
 }
+
+* {
+    border-color: rgba(138, 150, 163, 0.2);
+}
+
 .cover {
     height: 25vw;
     min-height: 10rem;
@@ -52,7 +57,6 @@ post {
 
     &:not(:last-child) {
         border-bottom-width: 1px;
-        border-color: rgba(138, 150, 163, 0.2);
         margin-bottom: 1.5rem;
     }
 }
@@ -127,7 +131,6 @@ p {
     border-bottom-left-radius: 0.25em;
     padding: 0.3em;
     cursor: pointer;
-    border: 1px solid rgba(138, 150, 163, 0.2);
     border-right-width: 0px;
     background-color: var(--bg-color);
 }
@@ -149,7 +152,7 @@ p {
     .color-mode-switch .color-mode {
         background-color: var(--bg-color);
     }
-    .dark-mode .avatar {
+    .avatar {
         border-color: var(--dark-mode-bg-color);
     }
 }
@@ -157,15 +160,6 @@ p {
 .progress {
     background-color: rgba(0, 175, 240, 0.12);
     z-index: -1;
-}
-
-.poll,
-.poll > div {
-    border-color: rgba(138, 150, 163, 0.2);
-}
-
-.border-color {
-    border-color: rgba(138, 150, 163, 0.2);
 }
 
 .poll-data {
