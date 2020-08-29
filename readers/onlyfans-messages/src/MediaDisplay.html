@@ -1,0 +1,46 @@
+<template>
+    <a if.bind="media[0].type === 'photo'" class="w-full mb-1" href.bind="media[0].source.source" target="_blank">
+        <img class="w-full post-image rounded-md" src.bind="media[0].preview">
+    </a>
+    <div if.bind="media[0].type === 'video' || media[0].type === 'gif'" class="relative overflow-hidden rounded-md mb-1">
+        <div class="absolute bg-cover blur-filter" style.bind="{ 'background-image': 'url(' + media[0].preview + ')', 'z-index': '-1' }"></div>
+        <video class="w-full" poster.bind="media[0].preview" src.bind="media[0].source.source" loop.bind="media[0].type === 'gif' ? 'loop' : undefined" controls></video>
+    </div>
+    <div class="thumbnails-carousel mt-1 pb-1" if.bind="media.length > 1">
+        <a repeat.for="image of media | from: 1" href.bind="image.source.source" target="_blank">
+            <img class="w-auto h-32 max-w-none rounded-md" src.bind="image.preview">
+        </a>
+    </div>
+    <div if.bind="!message.isFree && message.canPurchase" class="background-image bg-cover bg-center p-4 rounded-md">
+        <div class="border p-4 rounded">
+            <div class="flex justify-between">
+                <div class="inline-list text-sm text-gray-600">
+                    <span if.bind="imagesCount > 0">
+                        <svg class="inline info-icon" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" d="M14.002 2h-12a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1zm-12-1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12z"/>
+                            <path d="M10.648 7.646a.5.5 0 0 1 .577-.093L15.002 9.5V14h-14v-2l2.646-2.354a.5.5 0 0 1 .63-.062l2.66 1.773 3.71-3.71z"/>
+                            <path fill-rule="evenodd" d="M4.502 7a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>
+                        </svg>
+                        ${ imagesCount }
+                    </span>
+                    <span if.bind="videoDuration > 0">
+                        <svg class="inline info-icon" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" d="M2.667 3.5c-.645 0-1.167.522-1.167 1.167v6.666c0 .645.522 1.167 1.167 1.167h6.666c.645 0 1.167-.522 1.167-1.167V4.667c0-.645-.522-1.167-1.167-1.167H2.667zM.5 4.667C.5 3.47 1.47 2.5 2.667 2.5h6.666c1.197 0 2.167.97 2.167 2.167v6.666c0 1.197-.97 2.167-2.167 2.167H2.667A2.167 2.167 0 0 1 .5 11.333V4.667z"/>
+                            <path fill-rule="evenodd" d="M11.25 5.65l2.768-1.605a.318.318 0 0 1 .482.263v7.384c0 .228-.26.393-.482.264l-2.767-1.605-.502.865 2.767 1.605c.859.498 1.984-.095 1.984-1.129V4.308c0-1.033-1.125-1.626-1.984-1.128L10.75 4.785l.502.865z"/>
+                        </svg>
+                        ${ videoDuration | duration }
+                    </span>
+                </div>
+                <div class="text-gray-600 opacity-75 text-sm">
+                    $${ post.price }
+                    <svg class="inline info-icon" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" d="M11.5 8h-7a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1zm-7-1a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-7zm0-3a3.5 3.5 0 1 1 7 0v3h-1V4a2.5 2.5 0 0 0-5 0v3h-1V4z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="rounded-full bg-cyan-of text-center font-medium text-white uppercase mt-2 py-2">
+                Media locked
+            </div>
+        </div>
+    </div>
+</template>

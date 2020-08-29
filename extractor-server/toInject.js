@@ -1,11 +1,18 @@
 ;(function() {
-    const extractors = {
-        'www.patreon.com': 'patreon',
-        'onlyfans.com': 'onlyfans',
+    const extractors = [
+        { regex: /www\.patreon\.com/, extractor: 'patreon' },
+        { regex: /onlyfans\.com\/my\/chats\/chat/, extractor: 'onlyfans-messages' },
+        { regex: /onlyfans\.com/, extractor: 'onlyfans' },
+    ]
+    let extractor = null
+    for (let i = 0; i < extractors.length; i++) {
+        if (extractors[i].regex.test(location.href)) {
+            extractor = extractors[i].extractor
+            break
+        }
     }
-    const extractor = extractors[location.host]
     if (!extractor) {
-        console.warning(`No extractor found for "${location.host}"!`)
+        console.warning(`No extractor found for "${location.href}"!`)
         return
     }
     const scr = document.createElement('script')

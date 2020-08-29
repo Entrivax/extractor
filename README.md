@@ -22,7 +22,7 @@ node ./index.js
 ```
 
 ### OnlyFans
-To download data for a given user: 
+To download data for a given user:
 1. Open your browser to the OnlyFans page of that user, (e.g. `https://onlyfans.com/testuser` for the user `testuser`)
 1. Open the dev tools (Ctrl+Shift+I), and open the console tab
 1. Copy the content of the file `extractor-server/toInject.js` in the console and press `Enter`
@@ -37,8 +37,24 @@ To read the backup:
 
 WARNING: The script was only tested when logged and subcribed to the user.
 
+### OnlyFans messages
+To download data for a given chat:
+1. Open your browser to an OnlyFans chat, (e.g. `https://onlyfans.com/my/chats/chat/xxxxxxxx`)
+1. Open the dev tools (Ctrl+Shift+I), and open the console tab
+1. Copy the content of the file `extractor-server/toInject.js` in the console and press `Enter`
+1. Stay on the page until the script says `Downloading finished x/x (100%)`
+
+Now, a file named `onlyfans-messagesg_{date}_{random_id}.zip` should exist in the `extractor-server` directory containing the backup.
+
+To read the backup:
+1. Extract the backup zip file in an empty folder
+1. Copy the file `index.html` from the `readers/onlyfans-messages/build` directory to the folder used for step 1
+1. Double click on the copied `index.html` file
+
+WARNING: The script was only tested when logged and subcribed to the user.
+
 ### Patreon
-To download data for a given user: 
+To download data for a given user:
 1. Open your browser to the Patreon page of that user, (e.g. `https://www.patreon.com/testuser/posts` for the user `testuser`)
 1. Open the dev tools (Ctrl+Shift+I), and open the console tab
 1. Copy the content of the file `extractor-server/toInject.js` in the console and press `Enter`
