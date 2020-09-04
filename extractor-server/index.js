@@ -136,22 +136,31 @@ wss.on('connection', (ws) => {
                     }))
                     break
                 }
-                const response = await axios.get(parsedMessage.url, {
-                    responseType: 'arraybuffer',
-                })
-                if (response.status >= 400) {
+                try {
+                    const response = await axios.get(parsedMessage.url, {
+                        responseType: 'arraybuffer',
+                    })
+                    if (response.status >= 400) {
+                        ws.send(JSON.stringify({
+                            type: parsedMessage.type + '_response',
+                            requestId: parsedMessage.requestId,
+                            error: 'failed_to_download'
+                        }))
+                        break
+                    }
+                    zipHandles[parsedMessage.id].append(Buffer.from(response.data), { name: parsedMessage.file })
+                    ws.send(JSON.stringify({
+                        type: parsedMessage.type + '_response',
+                        requestId: parsedMessage.requestId
+                    }))
+                } catch (exception) {
+                    console.error(exception)
                     ws.send(JSON.stringify({
                         type: parsedMessage.type + '_response',
                         requestId: parsedMessage.requestId,
                         error: 'failed_to_download'
                     }))
-                    break
                 }
-                zipHandles[parsedMessage.id].append(Buffer.from(response.data), { name: parsedMessage.file })
-                ws.send(JSON.stringify({
-                    type: parsedMessage.type + '_response',
-                    requestId: parsedMessage.requestId
-                }))
                 break
             case 'end':
                 if (zipHandles[parsedMessage.id] == null) {
