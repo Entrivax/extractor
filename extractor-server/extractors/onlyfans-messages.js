@@ -157,18 +157,45 @@
         }
 
         console.log("Downloading posts files")
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i]
-            try {
-                await downloadFile(ws, zipId, file)
-            } catch (err) {
-                console.warn(`Error while trying to fetch resource at url "${file}" :`, err)
-            }
-            if (i > 0 && i !== files.length - 1 && i % 10 === 9) {
-                console.log(`Downloading... ${i + 1}/${files.length} (${Math.round(((100*(i + 1) / files.length) + Number.EPSILON) * 100) / 100}%)`)
-            }
+        await downloadFiles(ws, zipId, files)
+    }
+
+    async function downloadFiles(ws, zipId, urls) {
+        const parallelDownloadsCount = 6
+        const urlsStack = Array.from(urls)
+        const runningPromises = []
+
+        for (let i = 0; i < parallelDownloadsCount && urlsStack.length > 0; i++) {
+            runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, urlsStack.splice(0, 1)[0])))
         }
-        console.log(`Downloading finished ${files.length}/${files.length} (100%)`)
+
+        while (urlsStack.length > 0) {
+            await Promise.race(runningPromises)
+
+            let downloadedFiles = urls.length - urlsStack.length
+            if (downloadedFiles % 10 === 0) {
+                console.log(`Downloaded ${downloadedFiles}/${urls.length} (${Math.round(((100 * downloadedFiles / urls.length) + Number.EPSILON) * 100) / 100}%)`)
+            }
+
+            runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, urlsStack.splice(0, 1)[0])))
+        }
+
+        await Promise.all(runningPromises)
+
+        console.log(`Downloading finished ${urls.length}/${urls.length} (100%)`)
+
+        function selfRemovePromise(promise) {
+            const self = new Promise(resolve => {
+                promise.catch(() => {}).then(() => {
+                    let indexOf = runningPromises.indexOf(self)
+                    if (indexOf !== -1) {
+                        runningPromises.splice(indexOf, 1)
+                    }
+                    resolve()
+                })
+            })
+            return self
+        }
     }
 
     async function downloadFile(ws, zipId, url) {
