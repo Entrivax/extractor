@@ -40,9 +40,20 @@
     async function extractFromCurrentOnlyfansPage(ws, zipId, creator) {
         let nextUrl = `https://onlyfans.com/api2/v2/users/${creator.id}/posts?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&pinned=0&app-token=${appToken}`
         let data = []
-        
+
+        let postsToBackup = window.prompt('Number of posts to backup (leave empty or write 0 for all)', '')
+        if (postsToBackup.trim().length > 0) {
+            let postsToBackupParsed = +postsToBackup
+            if (isNaN(postsToBackupParsed) || postsToBackupParsed < 0) {
+                window.alert('Not valid number of posts')
+                return
+            }
+            postsToBackup = postsToBackupParsed
+        } else {
+            postsToBackup = 0
+        }
         console.log("Downloading posts info")
-        while (nextUrl != null) {
+        while (nextUrl != null && (postsToBackup === 0 || (postsToBackup > 0 && data.length < postsToBackup))) {
             let response = await new Promise((resolve, reject) => {
                 let xhr = new XMLHttpRequest()
                 xhr.onreadystatechange = () => {
@@ -64,6 +75,10 @@
             if (responseObj) {
                 data.push(...responseObj)
             }
+        }
+
+        if (postsToBackup > 0 && data.length > postsToBackup) {
+            data = data.slice(0, postsToBackup)
         }
 
         let jsonResult = JSON.stringify({
