@@ -2,9 +2,10 @@
     let ws = new WebSocket('ws://localhost:8080')
     let files = []
     ws.onopen = async () => {
-        const zipId = (await openZip(ws, 'onlyfans')).zipId
+        const creator = await getCreatorInfo()
+        const zipId = (await openZip(ws, `onlyfans_${creator.username.replace(/\//, '-')}`)).zipId
 
-        await extractFromCurrentOnlyfansPage(ws, zipId)
+        await extractFromCurrentOnlyfansPage(ws, zipId, creator)
         await closeZip(ws, zipId)
         ws.close()
     }
@@ -15,7 +16,7 @@
         }
     })
 
-    async function extractFromCurrentOnlyfansPage(ws, zipId) {
+    async function getCreatorInfo() {
         console.log("Downloading creator info")
         let creator = await new Promise((resolve, reject) => {
             let xhr = new XMLHttpRequest()
@@ -33,9 +34,10 @@
             xhr.send()
         })
         console.log("Finished downloading creator info")
+        return creator
+    }
 
-
-
+    async function extractFromCurrentOnlyfansPage(ws, zipId, creator) {
         let nextUrl = `https://onlyfans.com/api2/v2/users/${creator.id}/posts?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&pinned=0&app-token=${appToken}`
         let data = []
         
@@ -102,7 +104,7 @@
                 addFile(m.thumb)
                 if (m.videoSources) {
                     Object.keys(m.videoSources).forEach((k) => {
-                        addFile(m.videoSources.k)
+                        addFile(m.videoSources[k])
                     })
                 }
             })
