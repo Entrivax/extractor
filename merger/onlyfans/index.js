@@ -278,7 +278,7 @@ function streamToString(stream) {
  * 
  * @param {string} questionStr 
  * @param {string[]} availableResponses 
- * @returns {string}
+ * @returns {Promise<string>}
  */
 async function question(questionStr, availableResponses) {
     if (Array.isArray(availableResponses)) {
