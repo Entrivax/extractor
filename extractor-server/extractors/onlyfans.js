@@ -81,82 +81,184 @@
             data = data.slice(0, postsToBackup)
         }
 
+        console.log("Finished downloading posts info")
+
+        console.log("Filter links of files to download")
+        let filesUrls = {}
+        let userIds = []
+        scrapUserMedia(creator)
+        data.forEach(d => {
+            scrapPostMedia(d)
+        })
+        function addFile(f) {
+            if (f != null) {
+                const url = new URL(f)
+                const urlNoSearch = encodeURI(`${encodeURIComponent(url.host)}${url.pathname}`)
+                if (filesUrls[urlNoSearch] == null) {
+                    filesUrls[urlNoSearch] = f
+                }
+            }
+        }
+        async function scrapUserMedia(user) {
+            if (user == null) {
+                return
+            }
+            addFile(user.avatar)
+            if (user.avatarThumbs) {
+                Object.keys(user.avatarThumbs).forEach((a) => {
+                    if (user.avatarThumbs[a]) {
+                        addFile(user.avatarThumbs[a])
+                        user.avatarThumbs[a] = cleanUrl(user.avatarThumbs[a])
+                    }
+                })
+            }
+            addFile(user.header)
+            if (user.headerThumbs) {
+                Object.keys(user.headerThumbs).forEach((h) => {
+                    if (user.headerThumbs[h]) {
+                        addFile(user.headerThumbs[h])
+                        user.headerThumbs[h] = cleanUrl(user.headerThumbs[h])
+                    }
+                })
+            }
+        }
+        async function scrapPostMedia(post) {
+            if (post == null) {
+                return
+            }
+            post.media.forEach(m => {
+                if (m.files) {
+                    Object.keys(m.files).forEach((f) => {
+                        if (m.files[f]?.url) {
+                            addFile(m.files[f].url)
+                            m.files[f].url = cleanUrl(m.files[f].url)
+                        }
+                    })
+                }
+                if (m.full) {
+                    addFile(m.full)
+                    m.full = cleanUrl(m.full)
+                }
+                if (m.info?.source?.source) {
+                    addFile(m.info.source.source)
+                    m.info.source.source = cleanUrl(m.info.source.source)
+                }
+                if (m.preview) {
+                    addFile(m.preview)
+                    m.preview = cleanUrl(m.preview)
+                }
+                if (m.source?.source) {
+                    addFile(m.source.source)
+                    m.source.source = cleanUrl(m.source.source)
+                }
+                if (m.squarePreview) {
+                    addFile(m.squarePreview)
+                    m.squarePreview = cleanUrl(m.squarePreview)
+                }
+                if (m.thumb) {
+                    addFile(m.thumb)
+                    m.thumb = cleanUrl(m.thumb)
+                }
+                if (m.videoSources) {
+                    Object.keys(m.videoSources).forEach((k) => {
+                        if (m.videoSources[k]) {
+                            addFile(m.videoSources[k])
+                            m.videoSources[k] = cleanUrl(m.videoSources[k])
+                        }
+                    })
+                }
+            })
+
+            post.linkedUsers?.forEach(u => {
+                if (userIds.indexOf(u.id) === -1) {
+                    userIds.push(u.id)
+                }
+            })
+            post.mentionedUsers?.forEach(u => {
+                if (userIds.indexOf(u.id) === -1) {
+                    userIds.push(u.id)
+                }
+            })
+            post.linkedPosts?.forEach(p => scrapPostMedia(p))
+        }
+
+        function cleanUrl(url) {
+            if (url == null) {
+                return url
+            }
+            try {
+                let urlParsed = new URL(url)
+                return `${urlParsed.origin}${urlParsed.pathname}`
+            } catch (e) {
+                return url
+            }
+        }
+
+        let users = {}
+        if (userIds.length > 0) {
+            users = await new Promise((resolve, reject) => {
+                let xhr = new XMLHttpRequest()
+                xhr.onreadystatechange = () => {
+                    if (xhr.readyState == 4) {
+                        if (xhr.status < 400) {
+                            resolve(JSON.parse(xhr.responseText))
+                        } else {
+                            reject()
+                        }
+                    }
+                }
+                xhr.open('POST', `https://onlyfans.com/api2/v2/users/list?app-token=${appToken}`)
+                xhr.setRequestHeader('Accept', 'application/json, text/plain, */*')
+                xhr.setRequestHeader('content-type', 'application/json')
+                xhr.send(JSON.stringify({
+                    m: userIds
+                }))
+            })
+
+            const _userIds = Object.keys(users)
+            _userIds.forEach(uid => scrapUserMedia(users[uid]))
+        }
+
         let jsonResult = JSON.stringify({
             creator,
+            users,
             data
         })
 
         await appendFile(ws, zipId, 'data.json', jsonResult)
         await appendFile(ws, zipId, 'data.json.js', `window.onlyFansData = ${jsonResult}`)
-        console.log("Finished downloading posts info")
-
-        console.log("Filter links of files to download")
-        let files = []
-        addFile(creator.avatar)
-        if (creator.avatarThumbs) {
-            Object.keys(creator.avatarThumbs).forEach((a) => {
-                addFile(creator.avatarThumbs[a])
-            })
-        }
-        addFile(creator.header)
-        if (creator.headerThumbs) {
-            Object.keys(creator.headerThumbs).forEach((h) => {
-                addFile(creator.headerThumbs[h])
-            })
-        }
-        data.forEach(d => {
-            d.media.forEach(m => {
-                if (m.files) {
-                    Object.keys(m.files).forEach((f) => {
-                        addFile(m.files[f]?.url)
-                    })
-                }
-                addFile(m.full)
-                addFile(m.info?.source?.source)
-                addFile(m.preview)
-                addFile(m.source?.source)
-                addFile(m.squarePreview)
-                addFile(m.thumb)
-                if (m.videoSources) {
-                    Object.keys(m.videoSources).forEach((k) => {
-                        addFile(m.videoSources[k])
-                    })
-                }
-            })
-        })
-        function addFile(f) {
-            if (f != null && files.indexOf(f) === -1) {
-                files.push(f)
-            }
-        }
 
         console.log("Downloading posts files")
-        await downloadFiles(ws, zipId, files)
+        await downloadFiles(ws, zipId, filesUrls)
     }
 
-    async function downloadFiles(ws, zipId, urls) {
+
+    async function downloadFiles(ws, zipId, files) {
         const parallelDownloadsCount = 6
-        const urlsStack = Array.from(urls)
+        const filesStack = Object.keys(files)
+        const filesCount = filesStack.length
         const runningPromises = []
 
-        for (let i = 0; i < parallelDownloadsCount && urlsStack.length > 0; i++) {
-            runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, urlsStack.splice(0, 1)[0])))
+        for (let i = 0; i < parallelDownloadsCount && filesStack.length > 0; i++) {
+            const zipUrl = filesStack.splice(0, 1)[0]
+            runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, zipUrl, files[zipUrl])))
         }
 
-        while (urlsStack.length > 0) {
+        while (filesStack.length > 0) {
             await Promise.race(runningPromises)
 
-            let downloadedFiles = urls.length - urlsStack.length
+            let downloadedFiles = filesCount - filesStack.length
             if (downloadedFiles % 10 === 0) {
-                console.log(`Downloaded ${downloadedFiles}/${urls.length} (${Math.round(((100 * downloadedFiles / urls.length) + Number.EPSILON) * 100) / 100}%)`)
+                console.log(`Downloaded ${downloadedFiles}/${filesCount} (${Math.round(((100 * downloadedFiles / filesCount) + Number.EPSILON) * 100) / 100}%)`)
             }
 
-            runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, urlsStack.splice(0, 1)[0])))
+            const zipUrl = filesStack.splice(0, 1)[0]
+            runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, zipUrl, files[zipUrl])))
         }
 
         await Promise.all(runningPromises)
 
-        console.log(`Downloading finished ${urls.length}/${urls.length} (100%)`)
+        console.log(`Downloading finished ${filesCount}/${filesCount} (100%)`)
 
         function selfRemovePromise(promise) {
             const self = new Promise(resolve => {
@@ -172,8 +274,7 @@
         }
     }
 
-    async function downloadFile(ws, zipId, url) {
-        let zipUrl = decodeURIComponent(url.replace(/^https?:\/\//, '').replace(/\?(.*)/, ''))
+    async function downloadFile(ws, zipId, zipUrl, url) {
         if (files.indexOf(zipUrl) === -1) {
             if (url.indexOf('https://public.onlyfans.com') >= 0) {
                 await appendFileFromUrl(ws, zipId, zipUrl, url)
