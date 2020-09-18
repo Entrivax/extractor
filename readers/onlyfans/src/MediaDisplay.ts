@@ -1,11 +1,11 @@
 import { bindable } from 'aurelia-framework'
-import { Creator } from 'app'
+import { User } from 'app'
 
 export class MediaDisplay {
     @bindable
     post: any
     @bindable
-    creator: Creator
+    creator: User
 
     media: any[]
     imagesCount: number

@@ -1,6 +1,7 @@
 import { Aurelia } from 'aurelia-framework'
 import * as environment from '../config/environment.json'
 import { PLATFORM } from 'aurelia-pal'
+import 'tippy.js/dist/tippy.css';
 
 export function configure (aurelia: Aurelia) {
     aurelia.use

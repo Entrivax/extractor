@@ -5,7 +5,8 @@ export class App {
     posts = []
     noData: boolean
     coverData: CoverData
-    creator: Creator
+    creator: User
+    users: User[]
     creatorCardInfo: CreatorCardInfo
 
     switchColorMode() {
@@ -31,7 +32,7 @@ export class App {
             this.posts = posts.map((p) => {
                 return {
                     id: p.id,
-                    content: p.text,
+                    content: processPostContent(p.text),
                     responseType: p.responseType,
                     mediaType: p.mediaType,
                     media: p.media.map((media) => {
@@ -62,12 +63,17 @@ export class App {
                 favoritedCount: data.creator.favoritedCount,
                 coverUrl: cleanLink(data.creator.header)
             }
-            this.creator = {
-                avatarUrl: cleanLink(data.creator.avatar),
-                name: data.creator.name,
-                username: data.creator.username,
-                isVerified: data.creator.isVerified,
+            this.creator = userFromUserData(data.creator)
+
+            const users = [this.creator]
+            if (data.users) {
+                const userIds = Object.keys(data.users)
+                for (let i = 0; i < userIds.length; i++) {
+                    const user = data.users[userIds[i]]
+                    users.push(userFromUserData(user))
+                }
             }
+            this.users = users
             this.creatorCardInfo = {
                 ...this.creator,
                 lastSeen: data.creator.lastSeen ? moment(data.creator.lastSeen).format('lll') : null,
@@ -83,6 +89,41 @@ export class App {
             console.error(e)
             this.noData = true
         }
+
+        function userFromUserData(user: any): User {
+            return {
+                avatarUrl: cleanLink(user.avatar),
+                name: user.name,
+                username: user.username,
+                isVerified: user.isVerified,
+                coverUrl: cleanLink(user.header)
+            }
+        }
+
+        function processPostContent(content: string) {
+            if (content == null) {
+                return content
+            }
+            try {
+                const parser = new DOMParser()
+                const htmlDoc = parser.parseFromString(content, 'text/html')
+                const links = htmlDoc.querySelectorAll('a')
+                for (let i = 0; i < links.length; i++) {
+                    const el = links[i]
+                    if (!el.hasAttribute('href')) {
+                        return
+                    }
+                    el.setAttribute('target', '_blank')
+                    const link = el.getAttribute('href')
+                    if (link.startsWith('/')) {
+                        el.setAttribute('href', `https://onlyfans.com${link}`)
+                    }
+                }
+                return htmlDoc.body.innerHTML
+            } catch (err) {
+                return content
+            }
+        }
     }
 }
 
@@ -94,11 +135,12 @@ export type CoverData = {
     coverUrl: string,
 }
 
-export type Creator = {
+export type User = {
     avatarUrl: string,
     name: string,
     username: string,
     isVerified: boolean,
+    coverUrl: string,
 }
 
 export type CreatorCardInfo = {

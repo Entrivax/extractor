@@ -29,8 +29,24 @@ body {
     }
 }
 
+.tippy-box {
+    color: var(--text-color);
+    background: var(--bg-color);
+}
+.dark-mode .tippy-box {
+    color: var(--dark-mode-text-color);
+    background: var(--dark-mode-bg-color);
+}
+
 * {
     border-color: rgba(138, 150, 163, 0.2);
+}
+
+a {
+    color: #00aff0;
+    &:hover {
+        color: #0091ea;
+    }
 }
 
 .cover {
@@ -172,6 +188,14 @@ p {
 
 .bg-cyan-of {
     background-color: #00aff0;
+}
+
+.tippy-content {
+    padding: 0;
+}
+
+.bg-semi-transparent {
+    background-color: rgba(0, 0, 0, 0.5);
 }
 
 /**
