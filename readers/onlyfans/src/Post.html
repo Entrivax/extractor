@@ -1,5 +1,6 @@
 <template>
     <require from="./MediaDisplay"></require>
+    <require from="./UserPreview"></require>
 
     <div>
         <div class="pb-4 w-100">
@@ -41,6 +42,10 @@
                 <div class="poll-data px-4 py-2 text-sm text-gray-600">
                     ${ post.voting.total } vote${ post.voting.total !== 1 ? 's' : ''}
                 </div>
+            </div>
+
+            <div class="my-3" if.bind="post.linkedUsers != null" repeat.for="user of post.linkedUsers">
+                <user-preview user.bind="user"></user-preview>
             </div>
 
             <div class="text-sm mt-4 px-4 md:px-0">

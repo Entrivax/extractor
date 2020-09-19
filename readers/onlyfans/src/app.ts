@@ -2,7 +2,7 @@ import { cleanLink } from "utils"
 import * as moment from "moment";
 
 export class App {
-    posts = []
+    posts: PostData[] = []
     noData: boolean
     coverData: CoverData
     creator: User
@@ -27,34 +27,7 @@ export class App {
             return this
         }
         try {
-            const posts = data.data;
-
-            this.posts = posts.map((p) => {
-                return {
-                    id: p.id,
-                    content: processPostContent(p.text),
-                    responseType: p.responseType,
-                    mediaType: p.mediaType,
-                    media: p.media.map((media) => {
-                        return {
-                            id: media.id,
-                            type: media.type,
-                            preview: cleanLink(media.preview),
-                            full: cleanLink(media.full),
-                            source: { ...media.source }
-                        }
-                    }),
-                    price: p.price,
-                    canViewMedia: p.canViewMedia,
-                    preview: [ ...p.preview ],
-                    hasVoting: p.hasVoting,
-                    voting: { ...p.voting },
-                    postedAt: moment(p.postedAt).format('lll'),
-                    commentsCount: p.commentsCount,
-                    favoritesCount: p.favoritesCount,
-                    tipsAmount: +(/\d+\.?\d*/g.exec(p.tipsAmount)?.[0]) > 0 ? p.tipsAmount : null,
-                }
-            })
+            const posts: any[] = data.data;
 
             this.coverData = {
                 name: data.creator.name,
@@ -74,6 +47,34 @@ export class App {
                 }
             }
             this.users = users
+
+            this.posts = posts.map<PostData>((p) => {
+                return {
+                    id: p.id,
+                    content: processPostContent(p.text),
+                    responseType: p.responseType,
+                    mediaType: p.mediaType,
+                    media: p.media.map((media) => {
+                        return {
+                            id: media.id,
+                            type: media.type,
+                            preview: cleanLink(media.preview),
+                            full: cleanLink(media.full),
+                            source: { ...media.source }
+                        }
+                    }),
+                    linkedUsers: p.linkedUsers?.map(u => this.users.find(user => user.id === u.id)).filter(u => u != null),
+                    price: p.price,
+                    canViewMedia: p.canViewMedia,
+                    preview: [ ...p.preview ],
+                    hasVoting: p.hasVoting,
+                    voting: { ...p.voting },
+                    postedAt: moment(p.postedAt).format('lll'),
+                    commentsCount: p.commentsCount,
+                    favoritesCount: p.favoritesCount,
+                    tipsAmount: +(/\d+\.?\d*/g.exec(p.tipsAmount)?.[0]) > 0 ? p.tipsAmount : null,
+                }
+            })
             this.creatorCardInfo = {
                 ...this.creator,
                 lastSeen: data.creator.lastSeen ? moment(data.creator.lastSeen).format('lll') : null,
@@ -92,6 +93,7 @@ export class App {
 
         function userFromUserData(user: any): User {
             return {
+                id: user.id,
                 avatarUrl: cleanLink(user.avatar),
                 name: user.name,
                 username: user.username,
@@ -136,6 +138,7 @@ export type CoverData = {
 }
 
 export type User = {
+    id: number,
     avatarUrl: string,
     name: string,
     username: string,
@@ -154,4 +157,28 @@ export type CreatorCardInfo = {
     location?: string,
     website?: string,
     wishlist?: string,
+}
+
+export type PostData = {
+    id: number,
+    content: string,
+    responseType: 'post',
+    mediaType: 'photo' | 'video',
+    media: {
+        id: number,
+        type: 'photo' | 'video',
+        preview: string,
+        full: string,
+        source: any
+    },
+    linkedUsers: User[],
+    price: number | null,
+    canViewMedia: boolean,
+    preview: number[],
+    hasVoting: boolean,
+    voting: any,
+    postedAt: string,
+    commentsCount: number
+    favoritesCount: number
+    tipsAmount: number
 }

@@ -1,0 +1,11 @@
+<template>
+    <div class="relative rounded-md cover-image bg-cover bg-center" style.bind="{ 'background-image': user.coverUrl ? ('url(' + user.coverUrl + ')') : undefined }">
+        <div class="absolute bottom-0 inset-x-0 bg-semi-transparent py-3 pl-34 pr-3">
+            <div class="text-white font-medium w-full max-w-full truncate" style="bottom: 100%">${ user.name }</div>
+            <div class="w-full text-sm max-w-full truncate" style="top: 100%">@${ user.username }</div>
+        </div>
+        <div class="p-3 z-10 relative">
+            <div class="rounded-full w-28 h-28 border-2 bg-cover bg-center avatar" style.bind="{ 'background-image': user.avatarUrl ? ('url(' + user.avatarUrl + ')') : undefined }"></div>
+        </div>
+    </div>
+</template>
