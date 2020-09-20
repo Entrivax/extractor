@@ -18,7 +18,8 @@ npm install
 First, run the server:
 ```sh
 cd extractor-server
-node ./index.js
+npm start
+# or: node ./index.js
 ```
 
 ### OnlyFans
