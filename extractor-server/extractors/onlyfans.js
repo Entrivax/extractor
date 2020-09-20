@@ -1,13 +1,21 @@
 ;(function(appToken) {
     let ws = new WebSocket('ws://localhost:8080')
     let files = []
+    let statusReporter = null
     ws.onopen = async () => {
-        const creator = await getCreatorInfo()
-        const zipId = (await openZip(ws, `onlyfans_${creator.username.replace(/\//, '-')}`)).zipId
-
-        await extractFromCurrentOnlyfansPage(ws, zipId, creator)
-        await closeZip(ws, zipId)
-        ws.close()
+        statusReporter = new StatusReporter(() => {
+            statusReporter = null
+        })
+        try {
+            const creator = await getCreatorInfo()
+            const zipId = (await openZip(ws, `onlyfans_${creator.username.replace(/\//, '-')}`)).zipId
+    
+            await extractFromCurrentOnlyfansPage(ws, zipId, creator)
+            await closeZip(ws, zipId)
+            ws.close()
+        } finally {
+            statusReporter?.remove()
+        }
     }
     ws.addEventListener('message', async (message) => {
         const parsedMessage = JSON.parse(message.data)
@@ -18,6 +26,7 @@
 
     async function getCreatorInfo() {
         console.log("Downloading creator info")
+        statusReporter?.setStatusText('Downloading creator info')
         let creator = await new Promise((resolve, reject) => {
             let xhr = new XMLHttpRequest()
             xhr.onreadystatechange = () => {
@@ -34,6 +43,7 @@
             xhr.send()
         })
         console.log("Finished downloading creator info")
+        statusReporter?.setStatusText('Finished downloading creator info')
         return creator
     }
 
@@ -53,6 +63,7 @@
             postsToBackup = 0
         }
         console.log("Downloading posts info")
+        statusReporter?.setStatusText('Downloading posts info')
         while (nextUrl != null && (postsToBackup === 0 || (postsToBackup > 0 && data.length < postsToBackup))) {
             let response = await new Promise((resolve, reject) => {
                 let xhr = new XMLHttpRequest()
@@ -82,8 +93,9 @@
         }
 
         console.log("Finished downloading posts info")
-
+        
         console.log("Filter links of files to download")
+        statusReporter?.setStatusText('Filter links of files to download')
         let filesUrls = {}
         let userIds = []
         scrapUserMedia(creator)
@@ -229,9 +241,124 @@
         await appendFile(ws, zipId, 'data.json.js', `window.onlyFansData = ${jsonResult}`)
 
         console.log("Downloading posts files")
+        statusReporter?.setStatusText('Downloading posts files')
         await downloadFiles(ws, zipId, filesUrls)
     }
 
+    function StatusReporter(onClose) {
+        const container = createElement('div', {
+            position: 'fixed',
+            top: '16px',
+            right: '16px',
+            width: '260px',
+            backgroundColor: '#05b4e2',
+            color: '#fff',
+            padding: '16px',
+            zIndex: '100',
+            borderRadius: '4px'
+        })
+
+        const statusTextContainer = createElement('div', { marginBottom: '4px' })
+
+        const closeButton = createElement('span', {
+            position: 'absolute',
+            top: '0px',
+            right: '6px',
+            cursor: 'pointer'
+        })
+        closeButton.innerText = 'x'
+        closeButton.addEventListener('click', () => {
+            remove()
+        })
+        container.appendChild(closeButton)
+        container.appendChild(statusTextContainer)
+        document.body.appendChild(container)
+
+        this.setStatusText = function(text) {
+            statusTextContainer.innerText = text
+        }
+
+        this.remove = remove
+        this.addProgress = (text) => {
+            return new ProgressBar(text)
+        }
+
+        function remove() {
+            if (typeof onClose === 'function') {
+                try {
+                    onClose()
+                } catch (e) {
+                    console.error(e)
+                }
+            }
+            document.body.removeChild(container)
+        }
+
+        function ProgressBar(text) {
+            const progressContainer = createElement('div', { marginBottom: '2px' })
+            const textContainer = createElement('div', { overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', whiteSpace: 'nowrap' })
+            textContainer.innerText = text
+            textContainer.title = text
+            progressContainer.appendChild(textContainer)
+            const progressBarContainer = createElement('div', {
+                display: 'flex',
+                width: '100%',
+                borderRadius: '2px',
+                height: '4px',
+                overflow: 'hidden'
+            })
+            const progressBarIndeterminate = createElement('div', {
+                height: '100%',
+                flexGrow: '1',
+                backgroundRepeat: 'repeat',
+                backgroundImage: 'linear-gradient(-45deg,#fff 25%,transparent 25%,transparent 50%,#fff 50%,#fff 75%,transparent 75%,transparent)',
+                backgroundSize: '12px 12px',
+                display: 'none'
+            })
+            const progressBarFilled = createElement('div', {
+                backgroundColor: '#fff',
+                height: '100%',
+                width: '0%'
+            })
+            const progressBarFiller = createElement('div', {
+                backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                height: '100%',
+                flexGrow: '1'
+            })
+            progressBarContainer.appendChild(progressBarIndeterminate)
+            progressBarContainer.appendChild(progressBarFilled)
+            progressBarContainer.appendChild(progressBarFiller)
+            progressContainer.appendChild(progressBarContainer)
+
+            this.setProgress = function(progress) {
+                if (progress === undefined) {
+                    progressBarIndeterminate.style.display = 'block'
+                    progressBarFilled.style.display = progressBarFiller.style.display = 'none'
+                } else {
+                    progressBarIndeterminate.style.display = 'none'
+                    progressBarFilled.style.display = progressBarFiller.style.display = 'block'
+                    progressBarFilled.style.width = `${progress * 100}%`
+                }
+            }
+
+            this.end = function() {
+                container.removeChild(progressContainer)
+            }
+
+            container.appendChild(progressContainer)
+        }
+    }
+
+    function createElement(tagName, style) {
+        const el = document.createElement(tagName)
+        if (style) {
+            const keys = Object.keys(style)
+            for (let i = 0; i < keys.length; i++) {
+                el.style[keys[i]] = style[keys[i]]
+            }
+        }
+        return el
+    }
 
     async function downloadFiles(ws, zipId, files) {
         const parallelDownloadsCount = 6
@@ -239,6 +366,7 @@
         const filesCount = filesStack.length
         const runningPromises = []
 
+        statusReporter?.setStatusText(`Downloading... (0/${filesCount} | 0%)`)
         for (let i = 0; i < parallelDownloadsCount && filesStack.length > 0; i++) {
             const zipUrl = filesStack.splice(0, 1)[0]
             runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, zipUrl, files[zipUrl])))
@@ -247,7 +375,8 @@
         while (filesStack.length > 0) {
             await Promise.race(runningPromises)
 
-            let downloadedFiles = filesCount - filesStack.length
+            let downloadedFiles = filesCount - (filesStack.length + runningPromises.length)
+            statusReporter?.setStatusText(`Downloading... (${downloadedFiles}/${filesCount} | ${Math.round(((100 * downloadedFiles / filesCount) + Number.EPSILON) * 100) / 100}%)`)
             if (downloadedFiles % 10 === 0) {
                 console.log(`Downloaded ${downloadedFiles}/${filesCount} (${Math.round(((100 * downloadedFiles / filesCount) + Number.EPSILON) * 100) / 100}%)`)
             }
@@ -256,9 +385,18 @@
             runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, zipUrl, files[zipUrl])))
         }
 
-        await Promise.all(runningPromises)
+        while (runningPromises.length > 0) {
+            await Promise.race(runningPromises)
+
+            let downloadedFiles = filesCount - (filesStack.length + runningPromises.length)
+            statusReporter?.setStatusText(`Downloading... (${downloadedFiles}/${filesCount} | ${Math.round(((100 * downloadedFiles / filesCount) + Number.EPSILON) * 100) / 100}%)`)
+            if (downloadedFiles % 10 === 0) {
+                console.log(`Downloaded ${downloadedFiles}/${filesCount} (${Math.round(((100 * downloadedFiles / filesCount) + Number.EPSILON) * 100) / 100}%)`)
+            }
+        }
 
         console.log(`Downloading finished ${filesCount}/${filesCount} (100%)`)
+        statusReporter?.setStatusText('Downloading finished')
 
         function selfRemovePromise(promise) {
             const self = new Promise(resolve => {
@@ -276,39 +414,58 @@
 
     async function downloadFile(ws, zipId, zipUrl, url) {
         if (files.indexOf(zipUrl) === -1) {
-            if (url.indexOf('https://public.onlyfans.com') >= 0) {
-                await appendFileFromUrl(ws, zipId, zipUrl, url)
-            } else {
-                let response = await new Promise((resolve, reject) => {
-                    let xhr = new XMLHttpRequest()
-                    xhr.responseType = "arraybuffer"
-                    xhr.onreadystatechange = () => {
-                        if (xhr.readyState == 4) {
-                            if (xhr.status < 400) {
-                                resolve(xhr.response)
-                            } else {
-                                reject()
+            const progressBar = statusReporter?.addProgress(url)
+            let excep = null
+            try {
+                if (url.indexOf('https://public.onlyfans.com') >= 0) {
+                    progressBar?.setProgress(undefined)
+                    await appendFileFromUrl(ws, zipId, zipUrl, url)
+                } else {
+                    let response = await new Promise((resolve, reject) => {
+                        let xhr = new XMLHttpRequest()
+                        xhr.responseType = "arraybuffer"
+                        xhr.onreadystatechange = () => {
+                            if (xhr.readyState == 4) {
+                                if (xhr.status < 400) {
+                                    resolve(xhr.response)
+                                } else {
+                                    reject()
+                                }
                             }
                         }
+                        xhr.onprogress = (ev) => {
+                            if (ev.lengthComputable) {
+                                progressBar?.setProgress(ev.loaded / ev.total)
+                            }
+                        }
+                        xhr.open('GET', url)
+                        xhr.send()
+                    })
+                    files.push(zipUrl)
+    
+                    var responseLength = new Uint8Array(response).byteLength;
+                    if (responseLength > 500000) {
+                        const { fileId } = await openFileStream(ws, zipId, zipUrl)
+                        const chunkSize = 500000
+                        let offset = 0
+                        while (offset < responseLength) {
+                            await appendToFileStream(ws, fileId, _arrayBufferToBase64(response, offset, chunkSize), true)
+                            offset += chunkSize
+                        }
+                        await closeFileStream(ws, fileId)
+                    } else {
+                        await appendFile(ws, zipId, zipUrl, _arrayBufferToBase64(response, 0, responseLength), true)
                     }
-                    xhr.open('GET', url)
-                    xhr.send()
-                })
-                files.push(zipUrl)
-
-                var responseLength = new Uint8Array(response).byteLength;
-                if (responseLength > 500000) {
-                    const { fileId } = await openFileStream(ws, zipId, zipUrl)
-                    const chunkSize = 500000
-                    let offset = 0
-                    while (offset < responseLength) {
-                        await appendToFileStream(ws, fileId, _arrayBufferToBase64(response, offset, chunkSize), true)
-                        offset += chunkSize
-                    }
-                    await closeFileStream(ws, fileId)
-                } else {
-                    await appendFile(ws, zipId, zipUrl, _arrayBufferToBase64(response, 0, responseLength), true)
                 }
+            } catch (e) {
+                if (e) { 
+                    excep = e
+                }
+            } finally {
+                progressBar?.end()
+            }
+            if (excep) {
+                throw excep
             }
         }
         return zipUrl
