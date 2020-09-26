@@ -2,20 +2,18 @@
     let ws = new WebSocket('ws://localhost:8080')
     let files = []
     let statusReporter = null
+    let downloadErrors = []
+    let totalDownloaded = 0
     ws.onopen = async () => {
         statusReporter = new StatusReporter(() => {
             statusReporter = null
         })
-        try {
-            const creator = await getCreatorInfo()
-            const zipId = (await openZip(ws, `onlyfans_${creator.username.replace(/\//, '-')}`)).zipId
-    
-            await extractFromCurrentOnlyfansPage(ws, zipId, creator)
-            await closeZip(ws, zipId)
-            ws.close()
-        } finally {
-            statusReporter?.remove()
-        }
+        const creator = await getCreatorInfo()
+        const zipId = (await openZip(ws, `onlyfans_${creator.username.replace(/\//, '-')}`)).zipId
+
+        await extractFromCurrentOnlyfansPage(ws, zipId, creator)
+        await closeZip(ws, zipId)
+        ws.close()
     }
     ws.addEventListener('message', async (message) => {
         const parsedMessage = JSON.parse(message.data)
@@ -375,11 +373,7 @@
         while (filesStack.length > 0) {
             await Promise.race(runningPromises)
 
-            let downloadedFiles = filesCount - (filesStack.length + runningPromises.length)
-            statusReporter?.setStatusText(`Downloading... (${downloadedFiles}/${filesCount} | ${Math.round(((100 * downloadedFiles / filesCount) + Number.EPSILON) * 100) / 100}%)`)
-            if (downloadedFiles % 10 === 0) {
-                console.log(`Downloaded ${downloadedFiles}/${filesCount} (${Math.round(((100 * downloadedFiles / filesCount) + Number.EPSILON) * 100) / 100}%)`)
-            }
+            updateStatus()
 
             const zipUrl = filesStack.splice(0, 1)[0]
             runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, zipUrl, files[zipUrl])))
@@ -388,15 +382,10 @@
         while (runningPromises.length > 0) {
             await Promise.race(runningPromises)
 
-            let downloadedFiles = filesCount - (filesStack.length + runningPromises.length)
-            statusReporter?.setStatusText(`Downloading... (${downloadedFiles}/${filesCount} | ${Math.round(((100 * downloadedFiles / filesCount) + Number.EPSILON) * 100) / 100}%)`)
-            if (downloadedFiles % 10 === 0) {
-                console.log(`Downloaded ${downloadedFiles}/${filesCount} (${Math.round(((100 * downloadedFiles / filesCount) + Number.EPSILON) * 100) / 100}%)`)
-            }
+            updateStatus()
         }
 
-        console.log(`Downloading finished ${filesCount}/${filesCount} (100%)`)
-        statusReporter?.setStatusText('Downloading finished')
+        statusReporter?.setStatusText(`Downloading finished (${filesCount} files) | Total downloaded: ${formatSize(totalDownloaded)}${downloadErrors.length > 0 ? ` | Download errors: ${downloadErrors.length}` : ''}`)
 
         function selfRemovePromise(promise) {
             const self = new Promise(resolve => {
@@ -410,6 +399,23 @@
             })
             return self
         }
+
+        function updateStatus() {
+            let downloadedFiles = filesCount - (filesStack.length + runningPromises.length)
+            statusReporter?.setStatusText(`Downloading... (${downloadedFiles}/${filesCount} | ${Math.round(((100 * downloadedFiles / filesCount) + Number.EPSILON) * 100) / 100}%) | Total downloaded: ${formatSize(totalDownloaded)}${downloadErrors.length > 0 ? ` | Download errors: ${downloadErrors.length}` : ''}`)
+        }
+        function formatSize(size) {
+            if (size > 1000000000) {
+                return `${Math.round((size / 1000000000 + Number.EPSILON) * 100) / 100} GB`
+            }
+            if (size > 1000000) {
+                return `${Math.round((size / 1000000 + Number.EPSILON) * 100) / 100} MB`
+            }
+            if (size > 1000) {
+                return `${Math.round((size / 1000 + Number.EPSILON) * 100) / 100} kB`
+            }
+            return `${size} B`
+        }
     }
 
     async function downloadFile(ws, zipId, zipUrl, url) {
@@ -419,7 +425,8 @@
             try {
                 if (url.indexOf('https://public.onlyfans.com') >= 0) {
                     progressBar?.setProgress(undefined)
-                    await appendFileFromUrl(ws, zipId, zipUrl, url)
+                    const response = await appendFileFromUrl(ws, zipId, zipUrl, url)
+                    totalDownloaded += response.fileSize
                 } else {
                     let response = await new Promise((resolve, reject) => {
                         let xhr = new XMLHttpRequest()
@@ -433,6 +440,12 @@
                                 }
                             }
                         }
+                        xhr.onerror = (ev) => {
+                            reject()
+                        }
+                        xhr.ontimeout = (ev) => {
+                            reject()
+                        }
                         xhr.onprogress = (ev) => {
                             if (ev.lengthComputable) {
                                 progressBar?.setProgress(ev.loaded / ev.total)
@@ -442,7 +455,7 @@
                         xhr.send()
                     })
                     files.push(zipUrl)
-    
+
                     var responseLength = new Uint8Array(response).byteLength;
                     if (responseLength > 500000) {
                         const { fileId } = await openFileStream(ws, zipId, zipUrl)
@@ -456,15 +469,17 @@
                     } else {
                         await appendFile(ws, zipId, zipUrl, _arrayBufferToBase64(response, 0, responseLength), true)
                     }
+                    totalDownloaded += responseLength
                 }
             } catch (e) {
-                if (e) { 
+                if (e) {
                     excep = e
                 }
             } finally {
                 progressBar?.end()
             }
             if (excep) {
+                downloadErrors.push(url)
                 throw excep
             }
         }
@@ -541,13 +556,19 @@
     }
 
     function appendFileFromUrl(ws, zipId, filePath, url) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             sendMessage(ws, {
                 type: 'append-file-from-url',
                 id: zipId,
                 file: filePath,
                 url: url
-            }, (data) => resolve(data))
+            }, (data) => {
+                if (data.error) {
+                    reject(new Error(data.error))
+                    return
+                }
+                resolve(data)
+            })
         })
     }
 

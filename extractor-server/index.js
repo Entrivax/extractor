@@ -148,10 +148,12 @@ wss.on('connection', (ws) => {
                         }))
                         break
                     }
-                    zipHandles[parsedMessage.id].append(Buffer.from(response.data), { name: parsedMessage.file })
+                    const bufferData = Buffer.from(response.data)
+                    zipHandles[parsedMessage.id].append(bufferData, { name: parsedMessage.file })
                     ws.send(JSON.stringify({
                         type: parsedMessage.type + '_response',
-                        requestId: parsedMessage.requestId
+                        requestId: parsedMessage.requestId,
+                        fileSize: bufferData.length
                     }))
                 } catch (exception) {
                     console.error(exception)
