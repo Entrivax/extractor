@@ -48,33 +48,7 @@ export class App {
             }
             this.users = users
 
-            this.posts = posts.map<PostData>((p) => {
-                return {
-                    id: p.id,
-                    content: processPostContent(p.text),
-                    responseType: p.responseType,
-                    mediaType: p.mediaType,
-                    media: p.media.map((media) => {
-                        return {
-                            id: media.id,
-                            type: media.type,
-                            preview: cleanLink(media.preview),
-                            full: cleanLink(media.full),
-                            source: { ...media.source }
-                        }
-                    }),
-                    linkedUsers: p.linkedUsers?.map(u => this.users.find(user => user.id === u.id)).filter(u => u != null),
-                    price: p.price,
-                    canViewMedia: p.canViewMedia,
-                    preview: [ ...p.preview ],
-                    hasVoting: p.hasVoting,
-                    voting: { ...p.voting },
-                    postedAt: moment(p.postedAt).format('lll'),
-                    commentsCount: p.commentsCount,
-                    favoritesCount: p.favoritesCount,
-                    tipsAmount: +(/\d+\.?\d*/g.exec(p.tipsAmount)?.[0]) > 0 ? p.tipsAmount : null,
-                }
-            })
+            this.posts = posts.map<PostData>((p) => postFromPostData(this.users, p))
             this.creatorCardInfo = {
                 ...this.creator,
                 lastSeen: data.creator.lastSeen ? moment(data.creator.lastSeen).format('lll') : null,
@@ -99,6 +73,35 @@ export class App {
                 username: user.username,
                 isVerified: user.isVerified,
                 coverUrl: cleanLink(user.header)
+            }
+        }
+
+        function postFromPostData(users: User[], post: any): PostData {
+            return {
+                id: post.id,
+                content: processPostContent(post.text),
+                responseType: post.responseType,
+                mediaType: post.mediaType,
+                media: post.media.map((media) => {
+                    return {
+                        id: media.id,
+                        type: media.type,
+                        preview: cleanLink(media.preview),
+                        full: cleanLink(media.full),
+                        source: { ...media.source }
+                    }
+                }),
+                linkedPosts: post.linkedPosts?.map(p => postFromPostData(users, p)),
+                linkedUsers: post.linkedUsers?.map(u => users.find(user => user.id === u.id)).filter(u => u != null),
+                price: post.price,
+                canViewMedia: post.canViewMedia,
+                preview: [ ...post.preview ],
+                hasVoting: post.hasVoting,
+                voting: { ...post.voting },
+                postedAt: moment(post.postedAt).format('lll'),
+                commentsCount: post.commentsCount,
+                favoritesCount: post.favoritesCount,
+                tipsAmount: +(/\d+\.?\d*/g.exec(post.tipsAmount)?.[0]) > 0 ? post.tipsAmount : null,
             }
         }
 
@@ -171,6 +174,7 @@ export type PostData = {
         full: string,
         source: any
     },
+    linkedPosts: PostData[],
     linkedUsers: User[],
     price: number | null,
     canViewMedia: boolean,

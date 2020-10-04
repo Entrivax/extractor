@@ -4,6 +4,9 @@ import tippy from 'tippy.js';
 
 export class Post {
     @bindable
+    isNested: boolean
+
+    @bindable
     post: any
 
     @bindable

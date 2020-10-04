@@ -6,6 +6,8 @@ export class MediaDisplay {
     post: any
     @bindable
     creator: User
+    @bindable
+    isNested: boolean
 
     media: any[]
     imagesCount: number
