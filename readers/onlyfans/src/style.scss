@@ -59,12 +59,12 @@ a {
     }
 }
 
-image-post .post-image {
+media-display .post-image {
     max-height: calc(100vh - 100px);
     object-fit: cover;
 }
 
-video-post video {
+media-display video {
     max-height: calc(100vh - 100px);
 }
 
