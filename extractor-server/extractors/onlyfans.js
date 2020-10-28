@@ -48,6 +48,8 @@
     async function extractFromCurrentOnlyfansPage(ws, zipId, creator) {
         let nextUrl = `https://onlyfans.com/api2/v2/users/${creator.id}/posts?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&pinned=0&app-token=${appToken}`
         let data = []
+        let pinnedPosts = []
+        let archivedPosts = []
 
         let postsToBackup = window.prompt('Number of posts to backup (leave empty or write 0 for all)', '')
         if (postsToBackup.trim().length > 0) {
@@ -63,23 +65,9 @@
         console.log("Downloading posts info")
         statusReporter?.setStatusText('Downloading posts info')
         while (nextUrl != null && (postsToBackup === 0 || (postsToBackup > 0 && data.length < postsToBackup))) {
-            let response = await new Promise((resolve, reject) => {
-                let xhr = new XMLHttpRequest()
-                xhr.onreadystatechange = () => {
-                    if (xhr.readyState == 4) {
-                        if (xhr.status < 400) {
-                            resolve(xhr.responseText)
-                        } else {
-                            reject()
-                        }
-                    }
-                }
-                xhr.open('GET', nextUrl)
-                xhr.setRequestHeader('Accept', 'application/json')
-                xhr.send()
-            })
+            let response = await makeRequest(nextUrl, 'GET', undefined)
     
-            let responseObj = JSON.parse(response)
+            let responseObj = JSON.parse(response.responseText)
             nextUrl = responseObj && responseObj.length >= 10 ? `https://onlyfans.com/api2/v2/users/${creator.id}/posts?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&beforePublishTime=${responseObj[responseObj.length - 1].postedAtPrecise}&pinned=0&app-token=${appToken}` : null
             if (responseObj) {
                 data.push(...responseObj)
@@ -89,15 +77,107 @@
         if (postsToBackup > 0 && data.length > postsToBackup) {
             data = data.slice(0, postsToBackup)
         }
-
         console.log("Finished downloading posts info")
+
+        console.log("Downloading archived posts info")
+        statusReporter?.setStatusText('Downloading archived posts info')
+        nextUrl = `https://onlyfans.com/api2/v2/users/${creator.id}/posts/archived?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&pinned=0&app-token=${appToken}`
+        while (nextUrl != null) {
+            let response = await makeRequest(nextUrl, 'GET', undefined)
+    
+            let responseObj = JSON.parse(response.responseText)
+            nextUrl = responseObj && responseObj.length >= 10 ? `https://onlyfans.com/api2/v2/users/${creator.id}/posts/archived?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&beforePublishTime=${responseObj[responseObj.length - 1].postedAtPrecise}&pinned=0&app-token=${appToken}` : null
+            if (responseObj) {
+                archivedPosts.push(...responseObj)
+            }
+        }
+        console.log("Finished downloading archived posts info")
+
+        if (creator.hasPinnedPosts) {
+            console.log("Downloading pinned posts info")
+            statusReporter?.setStatusText('Downloading pinned posts info')
+            let response = await makeRequest(`https://onlyfans.com/api2/v2/users/${creator.id}/posts?&order=publish_date_desc&skip_users=all&skip_users_dups=1&pinned=1&app-token=${appToken}`, 'GET', undefined)
+    
+            let responseObj = JSON.parse(response.responseText)
+            if (responseObj) {
+                pinnedPosts.push(...responseObj)
+            }
+            console.log("Finished downloading pinned posts info")
+        }
+
+        let stories = undefined
+        if (creator.hasStories)
+        {
+            console.log("Downloading stories info")
+            statusReporter?.setStatusText('Downloading stories info')
+            let response = await makeRequest(`https://onlyfans.com/api2/v2/users/${creator.id}/stories?unf=1&app-token=${appToken}`, 'GET', undefined)
+            stories = JSON.parse(response.responseText)
+            console.log("Finished downloading stories info")
+        }
+
+        let highlights = undefined
+        {
+            console.log("Downloading highlights info")
+            statusReporter?.setStatusText('Downloading highlights info')
+            let response = await makeRequest(`https://onlyfans.com/api2/v2/users/${creator.id}/stories/highlights?unf=1&app-token=${appToken}`, 'GET', undefined)
+            let tempHighlights = JSON.parse(response.responseText)
+            if (tempHighlights?.length > 0) {
+                highlights = []
+                for (let i = 0; i < tempHighlights.length; i++) {
+                    let highlightInfo = JSON.parse((await makeRequest(`https://onlyfans.com/api2/v2/stories/highlights/${tempHighlights[i].id}?unf=1&app-token=${appToken}`, 'GET', undefined)).responseText)
+                    highlights.push(highlightInfo)
+                }
+            }
+            console.log("Finished downloading highlights info")
+        }
+
+        let friends = []
+        if (creator.hasFriends)
+        {
+            console.log("Downloading friends info")
+            statusReporter?.setStatusText('Downloading friends info')
+            let downloadMore = true
+            let offset = 0
+            while (downloadMore) {
+                let response = await makeRequest(`https://onlyfans.com/api2/v2/users/${creator.id}/friends?limit=10&offset=${offset}&app-token=${appToken}`, 'GET', undefined)
+                let tempFriends = JSON.parse(response.responseText)
+                friends.push(...tempFriends)
+                if (tempFriends.length < 10) {
+                    downloadMore = false
+                } else {
+                    offset += 10
+                }
+            }
+            console.log("Finished downloading friends info")
+        }
         
         console.log("Filter links of files to download")
         statusReporter?.setStatusText('Filter links of files to download')
         let filesUrls = {}
         let userIds = []
         scrapUserMedia(creator)
+        if (stories?.length > 0) {
+            stories.forEach(story => {
+                scrapStoryInfo(story)
+            })
+        }
+        highlights?.forEach((highlightInfo) => {
+            addFile(highlightInfo.cover)
+            highlightInfo.cover = cleanUrl(highlightInfo.cover)
+            highlightInfo?.stories.forEach(story => {
+                scrapStoryInfo(story)
+            })
+        })
+        friends.forEach(friend => {
+            scrapUserMedia(friend)
+        })
         data.forEach(d => {
+            scrapPostMedia(d)
+        })
+        archivedPosts.forEach(d => {
+            scrapPostMedia(d)
+        })
+        pinnedPosts.forEach(d => {
             scrapPostMedia(d)
         })
         function addFile(f) {
@@ -109,7 +189,7 @@
                 }
             }
         }
-        async function scrapUserMedia(user) {
+        function scrapUserMedia(user) {
             if (user == null) {
                 return
             }
@@ -132,7 +212,7 @@
                 })
             }
         }
-        async function scrapPostMedia(post) {
+        function scrapPostMedia(post) {
             if (post == null) {
                 return
             }
@@ -192,6 +272,27 @@
             post.linkedPosts?.forEach(p => scrapPostMedia(p))
         }
 
+        function scrapStoryInfo(story) {
+            story.media?.forEach(m => {
+                if (m.files) {
+                    let keys = Object.keys(m.files)
+                    keys.forEach(k => {
+                        if (m.files[k].url) {
+                            addFile(m.files[k].url)
+                            m.files[k].url = cleanUrl(m.files[k].url)
+                        }
+                        if (m.files[k].sources) {
+                            let sources = Object.keys(m.files[k].sources)
+                            sources.forEach(source => {
+                                addFile(m.files[k].sources[source])
+                                m.files[k].sources[source] = cleanUrl(m.files[k].sources[source])
+                            })
+                        }
+                    })
+                }
+            })
+        }
+
         function cleanUrl(url) {
             if (url == null) {
                 return url
@@ -232,7 +333,12 @@
         let jsonResult = JSON.stringify({
             creator,
             users,
-            data
+            data,
+            highlights,
+            stories,
+            friends,
+            pinnedPosts,
+            archivedPosts
         })
 
         await appendFile(ws, zipId, 'data.json', jsonResult)
@@ -358,6 +464,24 @@
         return el
     }
 
+    function makeRequest(url, method, body) {
+        return new Promise((resolve, reject) => {
+            let xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState == 4) {
+                    if (xhr.status < 400) {
+                        resolve(xhr)
+                    } else {
+                        reject()
+                    }
+                }
+            }
+            xhr.open(method, url)
+            xhr.setRequestHeader('Accept', 'application/json')
+            xhr.send(body)
+        })
+    }
+
     async function downloadFiles(ws, zipId, files) {
         const parallelDownloadsCount = 6
         const filesStack = Object.keys(files)
@@ -423,7 +547,7 @@
             const progressBar = statusReporter?.addProgress(url)
             let excep = null
             try {
-                if (url.indexOf('https://public.onlyfans.com') >= 0) {
+                if (url.indexOf('https://public.onlyfans.com') >= 0 || url.indexOf('https://cdn2.onlyfans.com/files/thumbs') >= 0) {
                     progressBar?.setProgress(undefined)
                     const response = await appendFileFromUrl(ws, zipId, zipUrl, url)
                     totalDownloaded += response.fileSize
