@@ -12,6 +12,13 @@ const server = http.createServer(app)
 
 const wss = new WebSocket.Server({ server })
 
+const args = require('yargs')
+    .option('port', {
+        default: 8080,
+        description: 'the port the server will be running on',
+        type: 'number'
+    }).argv
+
 /**
  * @type {{[id: string]: archiver.Archiver}}
  */
@@ -184,10 +191,38 @@ wss.on('connection', (ws) => {
     });
 });
 
-app.use('/', express.static('./extractors'))
+app.use('/', (req, res) => {
+    const extractors = [
+        { regex: /www\.patreon\.com/, extractor: 'patreon' },
+        { regex: /onlyfans\.com\/my\/chats\/chat/, extractor: 'onlyfans-messages' },
+        { regex: /onlyfans\.com/, extractor: 'onlyfans' },
+    ]
+    let extractor = null
+    for (let i = 0; i < extractors.length; i++) {
+        if (extractors[i].regex.test(req.query.url)) {
+            extractor = extractors[i].extractor
+            break
+        }
+    }
+    if (!extractor) {
+        console.warning(`No extractor found for "${req.query.url}"!`)
+        res.send(`console.warning("No extractor found for \"${req.query.url}\"!")`)
+        return
+    }
+    fs.readFile(`extractors/${extractor}.js`, (err, data) => {
+        if (err) {
+            res.send(`console.error(${JSON.stringify(err)})`)
+            return
+        }
+        res.send(`${data.toString('utf8')}("${req.protocol.endsWith('s') ? 'wss' : 'ws'}://${req.get('host')}")`)
+        
+    })
+})
 
-server.listen(8080, () => {
+server.listen(args.port, () => {
     console.log('Server started')
+    console.log('You can now extract data by injecting the following code:')
+    console.log(`${fs.readFileSync('./toInject.js')}(${args.port})`)
 })
 
 setInterval(function ping() {
