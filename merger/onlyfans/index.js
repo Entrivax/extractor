@@ -6,241 +6,319 @@ const archiver = require('archiver')
 const fs = require('fs')
 const readline = require('readline')
 const chalk = require('chalk')
-const diff = require('deep-diff').diff
 const _ = require('lodash')
+const cliProgress = require('cli-progress')
 
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
 
-const backupPath1 = args._[0]
-const backupPath2 = args._[1]
+const backupPath = args._[0]
+const patchPath = args._[1]
 const outputPath = args._[2]
 
 async function main() {
     const zipLoadPromises = []
-    const backupZip1 = new StreamZip({
-        file: backupPath1,
+    const backupZip = new StreamZip({
+        file: backupPath,
         storeEntries: true
     })
     zipLoadPromises.push(new Promise((resolve, reject) => {
-        backupZip1.on('ready', () => {
+        backupZip.on('ready', () => {
             resolve()
         })
-        backupZip1.on('error', (err) => {
+        backupZip.on('error', (err) => {
             reject(err)
         })
     }))
-    const backupZip2 = new StreamZip({
-        file: backupPath2,
+    const patchZip = new StreamZip({
+        file: patchPath,
         storeEntries: true
     })
     zipLoadPromises.push(new Promise((resolve, reject) => {
-        backupZip2.on('ready', () => {
+        patchZip.on('ready', () => {
             resolve()
         })
-        backupZip2.on('error', (err) => {
+        patchZip.on('error', (err) => {
             reject(err)
         })
     }))
 
     await Promise.all(zipLoadPromises)
 
-    const backup1AsString = await new Promise((resolve, reject) => {
-        backupZip1.stream('data.json', (err, stream) => {
+    const backupAsString = await new Promise((resolve, reject) => {
+        backupZip.stream('data.json', (err, stream) => {
             if (err) {
                 reject(err)
             }
             resolve(streamToString(stream))
         })
     })
-    const backup1 = JSON.parse(backup1AsString)
-    const backup2AsString = await new Promise((resolve, reject) => {
-        backupZip2.stream('data.json', (err, stream) => {
+    const backup = JSON.parse(backupAsString)
+    const patchAsString = await new Promise((resolve, reject) => {
+        patchZip.stream('data.json', (err, stream) => {
             if (err) {
                 reject(err)
             }
             resolve(streamToString(stream))
         })
     })
-    const backup2 = JSON.parse(backup2AsString)
+    const patch = JSON.parse(patchAsString)
 
-    if (backup1.creator.id !== backup2.creator.id) {
+    if (backup.creator.id !== patch.creator.id) {
         console.log("Creators are different, stopping merge")
-        backupZip1.close()
-        backupZip2.close()
+        backupZip.close()
+        patchZip.close()
         return
     }
 
     const newBackup = {}
-    const backup1FilesToExtract = []
-    const backup2FilesToExtract = []
+    const filesToExtract = []
 
+    // Creator
     {
-        const creatorDiff = diff(backup1.creator, backup2.creator)
-        if (creatorDiff && creatorDiff.length > 0) {
-            logDiff(creatorDiff)
-            const response = await question('Use left or right creator informations?', ['l', 'r'])
-            const selectedBackup = {'l': backup1, 'r': backup2}[response]
-            const filesList = {'l': backup1FilesToExtract, 'r': backup2FilesToExtract}[response]
-            addFile(filesList, selectedBackup.creator.avatar)
-            if (selectedBackup.creator.avatarThumbs) {
-                Object.keys(selectedBackup.creator.avatarThumbs).forEach((a) => {
-                    addFile(filesList, selectedBackup.creator.avatarThumbs[a])
-                })
-            }
-            addFile(filesList, selectedBackup.creator.header)
-            if (selectedBackup.creator.headerThumbs) {
-                Object.keys(selectedBackup.creator.headerThumbs).forEach((h) => {
-                    addFile(filesList, selectedBackup.creator.headerThumbs[h])
-                })
-            }
-            newBackup.creator = selectedBackup.creator
-        } else {
-            newBackup.creator = backup2.creator
-        }
+        newBackup.creator = fromUser(patch.creator)
     }
 
+    // Friends
     {
-        const backup1Posts = backup1.data.map(p => p.id.toString())
-        const backup2Posts = backup2.data.map(p => p.id.toString())
-        const intersectingPosts = _.intersection(backup1Posts, backup2Posts)
-        const postsConflicts = {}
-        for (let i = 0; i < intersectingPosts.length; i++) {
-            const post1 = backup1.data.find(p => p.id.toString() === intersectingPosts[i])
-            const post2 = backup2.data.find(p => p.id.toString() === intersectingPosts[i])
-            const postDiff = diff(post1, post2)
-            if (postDiff && postDiff.length > 0) {
-                let add = false
-                for (let j = 0; j < postDiff.length; j++) {
-                    let intersect = _.intersection(postDiff[j].path, ['source',
-                        'squarePreview',
-                        'full',
-                        'preview',
-                        'thumb',
-                        'url',
-                        'videoSources'])
-                    // Check if the diff is an url and discard diffs due to the url params
-                    if (intersect.length > 0
-                        && (typeof(postDiff[j].lhs) !== typeof(postDiff[j].rhs) || typeof(postDiff[j].lhs) === 'string')) {
-                        let url1 = new URL(postDiff[j].lhs)
-                        let url2 = new URL(postDiff[j].rhs)
-                        if (`${url1.origin}${url1.pathname}` !== `${url2.origin}${url2.pathname}`) {
-                            add = true
-                        }
-                    } else {
-                        add = true
-                    }
-                }
-                if (add) {
-                    postsConflicts[intersectingPosts[i]] = postDiff
-                }
-            }
-        }
+        newBackup.friends = (patch.friends || []).map(u => fromUser(u))
+    }
+
+    // Referenced users
+    {
+        const backupUsers = backup.users || {}
+        const backupUsersIds = Object.keys(backupUsers)
+        const patchUsers = patch.users || {}
+        const patchUsersIds = Object.keys(patchUsers)
+        const unionUsersIds = _.union(patchUsersIds, backupUsersIds)
+
+        const newUsers = {}
+        unionUsersIds.forEach(uid => {
+            const user = patchUsers[uid] || backupUsers[uid]
+            newUsers[uid] = fromUser(user)
+        })
+
+        newBackup.users = newUsers
+    }
+
+    // Posts (merge)
+    {
+        const backupPostsDictionnary = indexify(backup.data)
+        const backupPostsIds = Object.keys(backupPostsDictionnary)
+        const patchPostsDictionnary = indexify(patch.data)
+        const patchPostsIds = Object.keys(patchPostsDictionnary)
+        const unionPostsIds = _.union(patchPostsIds, backupPostsIds)
 
         const newPosts = []
-        const postsConflictsIds = Object.keys(postsConflicts)
-        if (postsConflictsIds.length > 0) {
-            let doForAll = null
-            for (let i = 0; i < postsConflictsIds.length; i++) {
-                let postToTake = null
-                if (doForAll == null) {
-                    console.log(`------- Conflict on post of id ${chalk.green(postsConflictsIds[i])} -------`)
-                    logDiff(postsConflicts[postsConflictsIds[i]])
-                    const response = await question('Use left or right creator informations?', postsConflictsIds.length > 1 ? ['l', 'r', 'lall', 'rall'] : ['l', 'r'])
-                    if (response.indexOf('all') !== -1) {
-                        doForAll = response.charAt(0)
-                    } else {
-                        postToTake = response
-                    }
-                }
-                if (doForAll != null) {
-                    postToTake = doForAll
-                }
-                let post = { 'l': backup1, 'r': backup2 }[postToTake].data.find(p => p.id.toString() === postsConflictsIds[i])
-                if (post != null) {
-                    newPosts.push(post)
-                    const filesList = {'l': backup1FilesToExtract, 'r': backup2FilesToExtract}[postToTake]
-                    addFilesFromPosts(filesList, [post])
+        for (let i = 0; i < unionPostsIds.length; i++) {
+            const backupPost = backupPostsDictionnary[unionPostsIds[i]]
+            const patchPost = patchPostsDictionnary[unionPostsIds[i]]
+            let newPost = postFromBackupAndPatch(backupPost, patchPost)
+
+            newPosts.push(newPost)
+        }
+
+        newBackup.data = _.sortBy(newPosts, p => -p.postedAtPrecise)
+    }
+
+    // Archived posts (merge)
+    {
+        const backupPostsDictionnary = indexify(backup.archivedPosts || [])
+        const backupPostsIds = Object.keys(backupPostsDictionnary)
+        const patchPostsDictionnary = indexify(patch.archivedPosts || [])
+        const patchPostsIds = Object.keys(patchPostsDictionnary)
+        const unionPostsIds = _.union(patchPostsIds, backupPostsIds)
+
+        const newPosts = []
+        for (let i = 0; i < unionPostsIds.length; i++) {
+            const backupPost = backupPostsDictionnary[unionPostsIds[i]]
+            const patchPost = patchPostsDictionnary[unionPostsIds[i]]
+            let newPost = postFromBackupAndPatch(backupPost, patchPost)
+
+            newPosts.push(newPost)
+        }
+
+        newBackup.archivedPosts = _.sortBy(newPosts, p => -p.postedAtPrecise)
+    }
+
+    // Pinned posts (keep only the most recent)
+    {
+        newBackup.pinnedPosts = (patch.pinnedPosts || [])
+            .map(post => postFromBackupAndPatch(null, post))
+    }
+
+    function postFromBackupAndPatch(backupPost, patchPost) {
+        let newPost = _.cloneDeep(patchPost)
+        if (backupPost) {
+            if (backupPost.media && backupPost.media.length > 0) {
+                if (!newPost.media || newPost.media.length === 0) {
+                    newPost.media = _.cloneDeep(backupPost.media)
+                } else {
+                    const newMediaArray = []
+                    const backupMediaDictionnary = indexify(backupPost.media)
+                    const patchMediaDictionnary = indexify(patchPost.media)
+                    const mediaIdsUnion = _.union(Object.keys(patchMediaDictionnary), Object.keys(backupMediaDictionnary))
+                    mediaIdsUnion.forEach(id => {
+                        if (patchMediaDictionnary[id]) {
+                            newMediaArray.push(patchMediaDictionnary[id])
+                        } else {
+                            newMediaArray.push(backupMediaDictionnary[id])
+                        }
+                    })
+                    newPost.media = newMediaArray
                 }
             }
         }
 
-        const postsFromBackup1 = backup1.data.filter(p => postsConflictsIds.indexOf(p.id.toString()) === -1)
-        addFilesFromPosts(backup1FilesToExtract, postsFromBackup1)
-        const postsIgnoreListForBackup2 = postsConflictsIds.concat(postsFromBackup1.map(p => p.id.toString()))
-        const postsFromBackup2 = backup2.data.filter(p => postsIgnoreListForBackup2.indexOf(p.id.toString()) === -1)
-        addFilesFromPosts(backup2FilesToExtract, postsFromBackup2)
-
-        newBackup.data = _.orderBy(newPosts.concat(postsFromBackup1).concat(postsFromBackup2), p => new Date(p.postedAt), 'desc')
-
-        function addFilesFromPosts(filesList, posts) {
-            posts.forEach(post => {
-                post.media.forEach(m => {
-                    if (m.files) {
-                        Object.keys(m.files).forEach((f) => {
-                            const a = m.files[f]
-                            addFile(filesList, a != null ? a.url : null)
-                        })
-                    }
-                    addFile(filesList, m.full)
-                    addFile(filesList, m.info != null && m.info.source != null ? m.info.source.source : null)
-                    addFile(filesList, m.preview)
-                    addFile(filesList, m.source != null ? m.source.source : null)
-                    addFile(filesList, m.squarePreview)
-                    addFile(filesList, m.thumb)
-                    if (m.videoSources) {
-                        Object.keys(m.videoSources).forEach((k) => {
-                            addFile(filesList, m.videoSources[k])
-                        })
+        newPost.media?.forEach(m => {
+            if (m.files) {
+                Object.keys(m.files).forEach((f) => {
+                    if (m.files[f]?.url) {
+                        addFile(filesToExtract, m.files[f].url)
                     }
                 })
+            }
+            if (m.full) {
+                addFile(filesToExtract, m.full)
+            }
+            if (m.info?.source?.source) {
+                addFile(filesToExtract, m.info.source.source)
+            }
+            if (m.preview) {
+                addFile(filesToExtract, m.preview)
+            }
+            if (m.source?.source) {
+                addFile(filesToExtract, m.source.source)
+            }
+            if (m.squarePreview) {
+                addFile(filesToExtract, m.squarePreview)
+            }
+            if (m.thumb) {
+                addFile(filesToExtract, m.thumb)
+            }
+            if (m.videoSources) {
+                Object.keys(m.videoSources).forEach((k) => {
+                    if (m.videoSources[k]) {
+                        addFile(filesToExtract, m.videoSources[k])
+                    }
+                })
+            }
+        })
+
+        newPost.linkedPosts?.forEach(p => postFromBackupAndPatch(null, p))
+
+        return newPost
+    }
+
+    // Stories and highlights
+    {
+        newBackup.stories = patchStoriesFromPatches(backup.stories, patch.stories)
+
+        const backupHighlightsDictionnary = indexify(backup.highlights || [])
+        const backupHighlightsIds = Object.keys(backupHighlightsDictionnary)
+        const patchHighlightsDictionnary = indexify(patch.highlights || [])
+        const patchHighlightsIds = Object.keys(patchHighlightsDictionnary)
+        const unionHighlightsIds = _.union(patchHighlightsIds, backupHighlightsIds)
+
+        newBackup.highlights = _.sortBy(unionHighlightsIds.map(id => {
+            const backupHighlight = backupHighlightsDictionnary[id]
+            const patchHighlight = patchHighlightsDictionnary[id]
+
+            const newHighlight = _.cloneDeep(patchHighlight)
+            newHighlight.stories = patchStoriesFromPatches(backupHighlight.stories, newHighlight.stories) // not optimized, 'cuz it's cloning two time patchHighlight.stories, but idc for now
+            addFile(filesToExtract, newHighlight.cover)
+
+            return newHighlight
+        }), highlightsInfo => new Date(highlightsInfo.createdAt).valueOf())
+    }
+
+    function patchStoriesFromPatches(backupStories, patchStories) {
+        const backupStoriesDictionnary = indexify(backupStories || [])
+        const backupStoriesIds = Object.keys(backupStoriesDictionnary)
+        const patchStoriesDictionnary = indexify(patchStories || [])
+        const patchStoriesIds = Object.keys(patchStoriesDictionnary)
+        const unionStoriesIds = _.union(patchStoriesIds, backupStoriesIds)
+
+        const newStories = []
+        for (let i = 0; i < unionStoriesIds.length; i++) {
+            const newStory = _.cloneDeep(patchStoriesDictionnary[unionStoriesIds[i]] || backupStoriesDictionnary[unionStoriesIds[i]])
+
+            newStory.media?.forEach(m => {
+                if (m.files) {
+                    let keys = Object.keys(m.files)
+                    keys.forEach(k => {
+                        addFile(filesToExtract, m.files[k].url)
+                        if (m.files[k].sources) {
+                            let sources = Object.keys(m.files[k].sources)
+                            sources.forEach(source => {
+                                addFile(filesToExtract, m.files[k].sources[source])
+                            })
+                        }
+                    })
+                }
+            })
+
+            newStories.push(newStory)
+        }
+
+        return _.sortBy(newStories, story => new Date(story.createdAt).valueOf())
+    }
+
+    function fromUser(user) {
+        addFile(filesToExtract, user.avatar)
+        if (user.avatarThumbs) {
+            Object.keys(user.avatarThumbs).forEach((a) => {
+                addFile(filesToExtract, user.avatarThumbs[a])
             })
         }
+        addFile(filesToExtract, user.header)
+        if (user.headerThumbs) {
+            Object.keys(user.headerThumbs).forEach((h) => {
+                addFile(filesToExtract, user.headerThumbs[h])
+            })
+        }
+        return _.cloneDeep(user)
     }
 
     const output = fs.createWriteStream(outputPath)
     const archive = archiver('zip')
     archive.pipe(output)
 
-    const backup1Entries = backupZip1.entries()
-    console.log(`Extracting ${backup1FilesToExtract.length} files from backup1...`)
-    for (let i = 0; i < backup1FilesToExtract.length; i++) {
-        const fileToExtract = backup1FilesToExtract[i]
-        await new Promise(resolve => {
-            if (backup1Entries[fileToExtract]) {
-                backupZip1.stream(fileToExtract, (err, stream) => {
-                    if (!err) {
-                        archive.append(stream, { name: fileToExtract })
-                    }
-
-                    stream.on('finish', () => {
-                        resolve()
-                    })
-                })
-            } else {
-                resolve()
-            }
-        })
+    console.log(`Extracting ${filesToExtract.length} files...`)
+    const patchEntries = patchZip.entries()
+    const backupEntries = backupZip.entries()
+    const progressBar = new cliProgress.SingleBar({
+        etaAsynchronousUpdate: true,
+        etaBuffer: 40
+    })
+    progressBar.start(filesToExtract.length, 0)
+    for (let i = 0; i < filesToExtract.length; i++) {
+        const fileToExtract = filesToExtract[i]
+        if (!(await copyFromZip(fileToExtract, patchEntries, patchZip, archive))) {
+            await copyFromZip(fileToExtract, backupEntries, backupZip, archive)
+            progressBar.updateETA()
+        }
+        progressBar.update(i + 1)
     }
-    console.log(`Extracting ${backup2FilesToExtract.length} files from backup2...`)
-    const backup2Entries = backupZip2.entries()
-    for (let i = 0; i < backup2FilesToExtract.length; i++) {
-        const fileToExtract = backup2FilesToExtract[i]
-        await new Promise(resolve => {
-            if (backup2Entries[fileToExtract]) {
-                backupZip2.stream(fileToExtract, (err, stream) => {
+    progressBar.stop()
+
+    function copyFromZip(fileToExtract, entries, fromZip, archive) {
+        return new Promise(resolve => {
+            if (entries[fileToExtract]) {
+                fromZip.stream(fileToExtract, (err, stream) => {
                     if (!err) {
                         archive.append(stream, { name: fileToExtract })
+                        stream.on('finish', () => {
+                            resolve(true)
+                        })
+                    } else {
+                        resolve(false)
                     }
-
-                    stream.on('finish', () => {
-                        resolve()
-                    })
                 })
             } else {
-                resolve()
+                resolve(false)
             }
         })
     }
@@ -251,9 +329,10 @@ async function main() {
     archive.append(Buffer.from(`window.onlyFansData = ${stringifiedBackup}`), { name: 'data.json.js' })
 
     console.log(`Finalizing...`)
-    archive.finalize()
-    backupZip1.close()
-    backupZip2.close()
+    await archive.finalize()
+    console.log(`Closing...`)
+    backupZip.close()
+    patchZip.close()
 }
 
 ;(async function() {
@@ -331,4 +410,8 @@ function cleanLink(link) {
         return null
     }
     return link.replace(/^https?:\/\//, '').replace(/\?(.*)/, '')
+}
+
+function indexify(array) {
+    return _.chain(array).groupBy('id').mapValues(m => m[0]).value()
 }

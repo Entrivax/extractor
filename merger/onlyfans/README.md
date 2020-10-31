@@ -1,6 +1,7 @@
 # OnlyFans merger
 
-Script to merge two OnlyFans backups
+Script to apply a backup patch on an Onlyfans backup.
+Backup patches are made the same way a backup is done.
 
 ## Setup
 ```sh
@@ -10,7 +11,7 @@ npm install
 
 ## How to use
 ```sh
-node ./index.js <path-to-old-backup.zip> <path-to-recent-backup.zip> <path-to-merged-backup.zip>
+node ./index.js <path-to-old-backup.zip> <path-to-backup-patch.zip> <path-to-merged-backup.zip>
 ```
 
 For exemple:
