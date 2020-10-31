@@ -205,8 +205,8 @@ app.use('/', (req, res) => {
         }
     }
     if (!extractor) {
-        console.warning(`No extractor found for "${req.query.url}"!`)
-        res.send(`console.warning("No extractor found for \"${req.query.url}\"!")`)
+        console.warn(`No extractor found for "${req.query.url}"!`)
+        res.send(`console.warn("No extractor found for \"${req.query.url}\"!")`)
         return
     }
     fs.readFile(`extractors/${extractor}.js`, (err, data) => {
