@@ -1,69 +1,28 @@
 const args = require('yargs')
     .demandCommand(3, 3)
+    .option('zip', {
+        type: 'boolean',
+        description: 'specify if the output must be a zip file'
+    })
     .argv
-const StreamZip = require('node-stream-zip')
-const archiver = require('archiver')
-const fs = require('fs')
-const readline = require('readline')
+const Readable = require('stream').Readable
 const chalk = require('chalk')
 const _ = require('lodash')
 const cliProgress = require('cli-progress')
-
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
+const backupInterface = require('./lib/backup-file-interface')
 
 const backupPath = args._[0]
 const patchPath = args._[1]
 const outputPath = args._[2]
 
 async function main() {
-    const zipLoadPromises = []
-    const backupZip = new StreamZip({
-        file: backupPath,
-        storeEntries: true
-    })
-    zipLoadPromises.push(new Promise((resolve, reject) => {
-        backupZip.on('ready', () => {
-            resolve()
-        })
-        backupZip.on('error', (err) => {
-            reject(err)
-        })
-    }))
-    const patchZip = new StreamZip({
-        file: patchPath,
-        storeEntries: true
-    })
-    zipLoadPromises.push(new Promise((resolve, reject) => {
-        patchZip.on('ready', () => {
-            resolve()
-        })
-        patchZip.on('error', (err) => {
-            reject(err)
-        })
-    }))
+    const isOutputZip = args.zip
+    const backupZip = await backupInterface.openBackup(backupPath)
+    const patchZip = await backupInterface.openBackup(patchPath)
 
-    await Promise.all(zipLoadPromises)
-
-    const backupAsString = await new Promise((resolve, reject) => {
-        backupZip.stream('data.json', (err, stream) => {
-            if (err) {
-                reject(err)
-            }
-            resolve(streamToString(stream))
-        })
-    })
+    const backupAsString = await getBackupData(backupZip)
     const backup = JSON.parse(backupAsString)
-    const patchAsString = await new Promise((resolve, reject) => {
-        patchZip.stream('data.json', (err, stream) => {
-            if (err) {
-                reject(err)
-            }
-            resolve(streamToString(stream))
-        })
-    })
+    const patchAsString = await getBackupData(patchZip)
     const patch = JSON.parse(patchAsString)
 
     if (backup.creator.id !== patch.creator.id) {
@@ -282,13 +241,9 @@ async function main() {
         return _.cloneDeep(user)
     }
 
-    const output = fs.createWriteStream(outputPath)
-    const archive = archiver('zip')
-    archive.pipe(output)
+    const archive = await backupInterface.createBackup(outputPath, isOutputZip)
 
     console.log(`Extracting ${filesToExtract.length} files...`)
-    const patchEntries = patchZip.entries()
-    const backupEntries = backupZip.entries()
     const progressBar = new cliProgress.SingleBar({
         etaAsynchronousUpdate: true,
         etaBuffer: 40
@@ -296,43 +251,40 @@ async function main() {
     progressBar.start(filesToExtract.length, 0)
     for (let i = 0; i < filesToExtract.length; i++) {
         const fileToExtract = filesToExtract[i]
-        if (!(await copyFromZip(fileToExtract, patchEntries, patchZip, archive))) {
-            await copyFromZip(fileToExtract, backupEntries, backupZip, archive)
+        if (!(await copyFromZip(fileToExtract, patchZip, archive))) {
+            if (!(await copyFromZip(fileToExtract, backupZip, archive))) {
+                console.warn(`file ${fileToExtract} not found in both sources`)
+            }
             progressBar.updateETA()
         }
         progressBar.update(i + 1)
     }
     progressBar.stop()
 
-    function copyFromZip(fileToExtract, entries, fromZip, archive) {
-        return new Promise(resolve => {
-            if (entries[fileToExtract]) {
-                fromZip.stream(fileToExtract, (err, stream) => {
-                    if (!err) {
-                        archive.append(stream, { name: fileToExtract })
-                        stream.on('finish', () => {
-                            resolve(true)
-                        })
-                    } else {
-                        resolve(false)
-                    }
-                })
-            } else {
-                resolve(false)
+    async function copyFromZip(fileToExtract, fromZip, archive) {
+        if (await fromZip.fileExists(fileToExtract)) {
+            try {
+                const stream = await fromZip.openFileStream(fileToExtract)
+                await archive.addFile(fileToExtract, stream)
+                return true
+            } catch (err) {
+                console.error(err)
+                return false
             }
-        })
+        }
+        return false
     }
 
     console.log(`Creating json and js files...`)
     const stringifiedBackup = JSON.stringify(newBackup)
-    archive.append(Buffer.from(stringifiedBackup), { name: 'data.json' })
-    archive.append(Buffer.from(`window.onlyFansData = ${stringifiedBackup}`), { name: 'data.json.js' })
+    await archive.addFile('data.json', stringToString(stringifiedBackup))
+    await archive.addFile('data.json.js', stringToString(`window.onlyFansData = ${stringifiedBackup}`))
 
     console.log(`Finalizing...`)
-    await archive.finalize()
+    await archive.close()
     console.log(`Closing...`)
-    backupZip.close()
-    patchZip.close()
+    await backupZip.close()
+    await patchZip.close()
 }
 
 ;(async function() {
@@ -341,8 +293,11 @@ async function main() {
     } catch (e) {
         console.error(e)
     }
-    rl.close()
 })()
+
+async function getBackupData(backupZip) {
+    return streamToString(await backupZip.openFileStream('data.json'))
+}
 
 function streamToString(stream) {
     const chunks = []
@@ -353,30 +308,12 @@ function streamToString(stream) {
     })
 }
 
-/**
- * 
- * @param {string} questionStr 
- * @param {string[]} availableResponses 
- * @returns {Promise<string>}
- */
-async function question(questionStr, availableResponses) {
-    if (Array.isArray(availableResponses)) {
-        questionStr += ` (${availableResponses.reduce((a, b) => a + '/' + b)})`
-
-        let response = null
-        while (availableResponses.indexOf(response) === -1) {
-            response = await _question(questionStr + ' ')
-        }
-        return response
-    } else {
-        return _question(questionStr + ' ')
-    }
-
-    function _question(questionStr) {
-        return new Promise((resolve) => {
-            rl.question(questionStr, resolve)
-        })
-    }
+function stringToString(str) {
+    const readable = new Readable()
+    readable._read = () => {}
+    readable.push(Buffer.from(str))
+    readable.push(null)
+    return readable
 }
 
 function logDiff(differences) {
