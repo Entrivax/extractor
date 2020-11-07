@@ -10,10 +10,27 @@
                 statusReporter = null
             })
             const creator = await getCreatorInfo()
+            let backupPath = window.prompt('If you want to merge data on a previously made backup, you can specify the file path here:', '')
+
+            let loadedBackupId = null
+            if (backupPath?.trim().length > 0) {
+                loadedBackupId = (await loadBackup(ws, backupPath)).id
+            }
+            if (loadedBackupId === -1) {
+                window.alert('Could not load backup, abort...')
+                return
+            }
             const zipId = (await openZip(ws, `onlyfans_${creator.username.replace(/\//, '-')}`)).zipId
-    
-            await extractFromCurrentOnlyfansPage(ws, zipId, creator)
+
+            try {
+                await extractFromCurrentOnlyfansPage(ws, zipId, creator, loadedBackupId)
+            } catch (err) {
+                console.error(err)
+            }
             await closeZip(ws, zipId)
+            if (loadedBackupId) {
+                await unloadBackup(ws, loadedBackupId)
+            }
             ws.close()
         }
         ws.addEventListener('message', async (message) => {
@@ -46,23 +63,12 @@
             return creator
         }
     
-        async function extractFromCurrentOnlyfansPage(ws, zipId, creator) {
+        async function extractFromCurrentOnlyfansPage(ws, zipId, creator, loadedBackupId) {
             let nextUrl = `https://onlyfans.com/api2/v2/users/${creator.id}/posts?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&pinned=0&app-token=${appToken}`
             let data = []
             let pinnedPosts = []
             let archivedPosts = []
 
-            let downloadUntil = window.prompt('If you want to make a partial backup, put the post id until which (included) it will download resources (like images and videos), else, put nothing.', '')
-            if (downloadUntil.trim().length > 0) {
-                let downloadUntilParsed = +downloadUntil
-                if (isNaN(downloadUntilParsed) || downloadUntilParsed < 0) {
-                    window.alert('Not valid number')
-                    return
-                }
-                downloadUntil = downloadUntilParsed
-            } else {
-                downloadUntil = 0
-            }
             console.log("Downloading posts info")
             statusReporter?.setStatusText('Downloading posts info')
             while (nextUrl != null) {
@@ -169,18 +175,14 @@
             friends.forEach(friend => {
                 scrapUserMedia(friend)
             })
-            let foundPostToStop = false
             data.forEach(d => {
-                scrapPostMedia(d, foundPostToStop)
-                if (d.id === downloadUntil) {
-                    foundPostToStop = true
-                }
+                scrapPostMedia(d)
             })
             archivedPosts.forEach(d => {
-                scrapPostMedia(d, false)
+                scrapPostMedia(d)
             })
             pinnedPosts.forEach(d => {
-                scrapPostMedia(d, false)
+                scrapPostMedia(d)
             })
             function addFile(f) {
                 if (f != null) {
@@ -191,10 +193,8 @@
                     }
                 }
             }
-            function addAndCleanFile(f, skipAdd) {
-                if (!skipAdd) {
-                    addFile(f)
-                }
+            function addAndCleanFile(f) {
+                addFile(f)
                 return cleanUrl(f)
             }
             function scrapUserMedia(user) {
@@ -218,7 +218,7 @@
                     })
                 }
             }
-            function scrapPostMedia(post, skipFileDownload) {
+            function scrapPostMedia(post) {
                 if (post == null) {
                     return
                 }
@@ -226,32 +226,32 @@
                     if (m.files) {
                         Object.keys(m.files).forEach((f) => {
                             if (m.files[f]?.url) {
-                                m.files[f].url = addAndCleanFile(m.files[f].url, skipFileDownload)
+                                m.files[f].url = addAndCleanFile(m.files[f].url)
                             }
                         })
                     }
                     if (m.full) {
-                        m.full = addAndCleanFile(m.full, skipFileDownload)
+                        m.full = addAndCleanFile(m.full)
                     }
                     if (m.info?.source?.source) {
-                        m.info.source.source = addAndCleanFile(m.info.source.source, skipFileDownload)
+                        m.info.source.source = addAndCleanFile(m.info.source.source)
                     }
                     if (m.preview) {
-                        m.preview = addAndCleanFile(m.preview, skipFileDownload)
+                        m.preview = addAndCleanFile(m.preview)
                     }
                     if (m.source?.source) {
-                        m.source.source = addAndCleanFile(m.source.source, skipFileDownload)
+                        m.source.source = addAndCleanFile(m.source.source)
                     }
                     if (m.squarePreview) {
-                        m.squarePreview = addAndCleanFile(m.squarePreview, skipFileDownload)
+                        m.squarePreview = addAndCleanFile(m.squarePreview)
                     }
                     if (m.thumb) {
-                        m.thumb = addAndCleanFile(m.thumb, skipFileDownload)
+                        m.thumb = addAndCleanFile(m.thumb)
                     }
                     if (m.videoSources) {
                         Object.keys(m.videoSources).forEach((k) => {
                             if (m.videoSources[k]) {
-                                m.videoSources[k] = addAndCleanFile(m.videoSources[k], skipFileDownload)
+                                m.videoSources[k] = addAndCleanFile(m.videoSources[k])
                             }
                         })
                     }
@@ -267,7 +267,7 @@
                         userIds.push(u.id)
                     }
                 })
-                post.linkedPosts?.forEach(p => scrapPostMedia(p, skipFileDownload))
+                post.linkedPosts?.forEach(p => scrapPostMedia(p))
             }
 
             function scrapStoryInfo(story) {
@@ -326,7 +326,7 @@
                 _userIds.forEach(uid => scrapUserMedia(users[uid]))
             }
 
-            let jsonResult = JSON.stringify({
+            let result = {
                 creator,
                 users,
                 data,
@@ -335,14 +335,43 @@
                 friends,
                 pinnedPosts,
                 archivedPosts
-            })
+            }
 
+            if (loadedBackupId != null) {
+                let jsonResult = JSON.stringify(result)
+                await appendFile(ws, zipId, 'data.json.ori', jsonResult)
+                await appendFile(ws, zipId, 'data.json.js.ori', `window.onlyFansData = ${jsonResult}`)
+                let filesInBackup = []
+                result = dataMerger.merge(JSON.parse(await loadFileFromBackup(ws, loadedBackupId, 'data.json')), result, (file) => {
+                    if (file == null) {
+                        return
+                    }
+                    try {
+                        const url = new URL(file)
+                        const urlNoSearch = encodeURI(`${encodeURIComponent(url.host)}${url.pathname}`)
+                        if (filesInBackup.indexOf(urlNoSearch) === -1) {
+                            filesInBackup.push(urlNoSearch)
+                        }
+                    } catch (err) {
+                        console.warn(err)
+                    }
+                })
+
+                console.log("Fetching referenced files from backup")
+                statusReporter?.setStatusText('Fetching referenced files from backup')
+                let diffFiles = _.difference(filesInBackup, Object.keys(filesUrls))
+                for (let i = 0; i < diffFiles.length; i++) {
+                    await tryImportFileFromBackup(ws, loadedBackupId, zipId, diffFiles[i])
+                }
+            }
+
+            let jsonResult = JSON.stringify(result)
             await appendFile(ws, zipId, 'data.json', jsonResult)
             await appendFile(ws, zipId, 'data.json.js', `window.onlyFansData = ${jsonResult}`)
 
             console.log("Downloading posts files")
             statusReporter?.setStatusText('Downloading posts files')
-            await downloadFiles(ws, zipId, filesUrls)
+            await downloadFiles(ws, zipId, filesUrls, loadedBackupId)
         }
 
         function StatusReporter(onClose) {
@@ -478,7 +507,7 @@
             })
         }
     
-        async function downloadFiles(ws, zipId, files) {
+        async function downloadFiles(ws, zipId, files, loadedBackupId) {
             const parallelDownloadsCount = 6
             const filesStack = Object.keys(files)
             const filesCount = filesStack.length
@@ -487,7 +516,7 @@
             statusReporter?.setStatusText(`Downloading... (0/${filesCount} | 0%)`)
             for (let i = 0; i < parallelDownloadsCount && filesStack.length > 0; i++) {
                 const zipUrl = filesStack.splice(0, 1)[0]
-                runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, zipUrl, files[zipUrl])))
+                runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, zipUrl, files[zipUrl], loadedBackupId)))
             }
     
             while (filesStack.length > 0) {
@@ -496,7 +525,7 @@
                 updateStatus()
     
                 const zipUrl = filesStack.splice(0, 1)[0]
-                runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, zipUrl, files[zipUrl])))
+                runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, zipUrl, files[zipUrl], loadedBackupId)))
             }
     
             while (runningPromises.length > 0) {
@@ -538,11 +567,20 @@
             }
         }
     
-        async function downloadFile(ws, zipId, zipUrl, url) {
-            if (files.indexOf(zipUrl) === -1) {
-                const progressBar = statusReporter?.addProgress(url)
-                let excep = null
-                try {
+        async function downloadFile(ws, zipId, zipUrl, url, backupId) {
+            const progressBar = statusReporter?.addProgress(url)
+            let excep = null
+            try {
+                var imported = false
+                if (backupId != null) {
+                    progressBar?.setProgress(undefined)
+                    try {
+                        if ((await tryImportFileFromBackup(ws, backupId, zipId, zipUrl)).success) {
+                            imported = true
+                        }
+                    } catch (err) { console.warn(err) }
+                }
+                if (!imported) {
                     if (url.indexOf('https://public.onlyfans.com') >= 0 || url.indexOf('https://cdn2.onlyfans.com/files/thumbs') >= 0) {
                         progressBar?.setProgress(undefined)
                         const response = await appendFileFromUrl(ws, zipId, zipUrl, url)
@@ -591,17 +629,17 @@
                         }
                         totalDownloaded += responseLength
                     }
-                } catch (e) {
-                    if (e) {
-                        excep = e
-                    }
-                } finally {
-                    progressBar?.end()
                 }
-                if (excep) {
-                    downloadErrors.push(url)
-                    throw excep
+            } catch (e) {
+                if (e) {
+                    excep = e
                 }
+            } finally {
+                progressBar?.end()
+            }
+            if (excep) {
+                downloadErrors.push(url)
+                throw excep
             }
             return zipUrl
     
@@ -629,6 +667,46 @@
                 sendMessage(ws, {
                     type: 'end',
                     id: zipId
+                }, (data) => resolve(data))
+            })
+        }
+
+        function loadBackup(ws, path) {
+            return new Promise((resolve) => {
+                sendMessage(ws, {
+                    type: 'load-backup',
+                    path: path
+                }, (data) => resolve(data))
+            })
+        }
+
+        function unloadBackup(ws, id) {
+            return new Promise((resolve) => {
+                sendMessage(ws, {
+                    type: 'unload-backup',
+                    id: id
+                }, (data) => resolve(data))
+            })
+        }
+
+        function tryImportFileFromBackup(ws, backupId, zipId, path) {
+            return new Promise((resolve) => {
+                sendMessage(ws, {
+                    type: 'import-file-from-backup',
+                    path: path,
+                    zipId: zipId,
+                    backupId: backupId
+                }, (data) => resolve(data))
+            })
+        }
+
+        function loadFileFromBackup(ws, backupId, path) {
+            return new Promise((resolve) => {
+                sendMessageWithStreamResponse(ws, {
+                    type: 'load-file-from-backup',
+                    path: path,
+                    id: backupId,
+                    encoding: 'utf8'
                 }, (data) => resolve(data))
             })
         }
@@ -706,6 +784,31 @@
                     if (parsedMessage.requestId === id && parsedMessage.type === message.type + '_response') {
                         ws.removeEventListener('message', listener)
                         onResponse(parsedMessage)
+                    }
+                }
+                ws.addEventListener('message', listener)
+            }
+            ws.send(JSON.stringify(message))
+        }
+    
+        function sendMessageWithStreamResponse(ws, message, onResponse) {
+            let id = generateId()
+            message.requestId = id
+            if (onResponse) {
+                let data = null
+                const listener = async (msg) => {
+                    const parsedMessage = JSON.parse(msg.data)
+                    if (parsedMessage.requestId === id && parsedMessage.type === message.type + '_response') {
+                        if (parsedMessage.end || parsedMessage.error) {
+                            ws.removeEventListener('message', listener)
+                            onResponse(data)
+                        } else {
+                            if (data == null) {
+                                data = parsedMessage.data
+                            } else {
+                                data += parsedMessage.data
+                            }
+                        }
                     }
                 }
                 ws.addEventListener('message', listener)
