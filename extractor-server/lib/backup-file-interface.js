@@ -106,6 +106,8 @@ class DirectoryBackup {
     async close() { }
 }
 
+/** @typedef {ZipBackup|DirectoryBackup} ReadBackup */
+
 exports.createBackup = async function(path, zip) {
     let backup = zip ? new WriteZipBackup(path) : new WriteDirectoryBackup(path)
     await backup.init()
@@ -162,3 +164,5 @@ class WriteDirectoryBackup {
 
     async close() { }
 }
+
+/** @typedef {WriteZipBackup|WriteDirectoryBackup} WriteBackup */

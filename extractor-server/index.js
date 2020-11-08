@@ -4,7 +4,6 @@ const axios = require('axios').default
 const express = require('express')
 const fs = require('fs')
 const path = require('path')
-const archiver = require('archiver')
 const moment = require('moment')
 const Readable = require('stream').Readable
 const backupInterface = require('./lib/backup-file-interface')
@@ -19,10 +18,15 @@ const args = require('yargs')
         default: 8080,
         description: 'the port the server will be running on',
         type: 'number'
-    }).argv
+    })
+    .option('zip', {
+        type: 'boolean',
+        description: 'specify if the output must be a zip file'
+    })
+    .argv
 
 /**
- * @type {{[id: string]: archiver.Archiver}}
+ * @type {{[id: string]: import('./lib/backup-file-interface').WriteBackup}}
  */
 const zipHandles = {}
 /**
@@ -30,6 +34,9 @@ const zipHandles = {}
  */
 const fileHandles = {}
 
+/**
+ * @type {{[id: string]: import('./lib/backup-file-interface').ReadBackup}}
+ */
 const backupHandles = {}
 
 wss.on('connection', (ws) => {
@@ -98,7 +105,7 @@ wss.on('connection', (ws) => {
                 try {
                     if (await backupHandles[parsedMessage.backupId].fileExists(parsedMessage.path)) {
                         const stream = await backupHandles[parsedMessage.backupId].openFileStream(parsedMessage.path)
-                        zipHandles[parsedMessage.zipId].append(stream, { name: parsedMessage.path })
+                        zipHandles[parsedMessage.id].addFile(parsedMessage.path, stream)
                         ws.send(JSON.stringify({
                             type: parsedMessage.type + '_response',
                             requestId: parsedMessage.requestId,
@@ -176,15 +183,10 @@ wss.on('connection', (ws) => {
                     id = generateId()
                 }
                 const date = moment()
-                const zipPath = __dirname + `/${parsedMessage.prefix || 'zip'}_${date.format('YYYY-MM-DD_HH-mm-ss')}_${id}.zip`
-                const output = fs.createWriteStream(zipPath)
+                const zipPath = __dirname + `/${parsedMessage.prefix || 'backup'}_${date.format('YYYY-MM-DD_HH-mm-ss')}_${id}${args.zip ? '.zip' : ''}`
 
-                const archive = archiver('zip')
-                output.on('close', () => {
-                    delete zipHandles[id]
-                })
+                const archive = await backupInterface.createBackup(zipPath, args.zip)
                 zipHandles[id] = archive
-                archive.pipe(output)
                 console.log(`Opened zip file ${zipPath}`)
                 ws.send(JSON.stringify({
                     type: parsedMessage.type + '_response',
@@ -202,10 +204,10 @@ wss.on('connection', (ws) => {
                     break
                 }
                 if (parsedMessage.isBase64) {
-                    zipHandles[parsedMessage.id].append(Buffer.from(parsedMessage.content, 'base64'), { name: parsedMessage.file })
+                    zipHandles[parsedMessage.id].addFile(parsedMessage.file, bufferToStream(Buffer.from(parsedMessage.content, 'base64')))
                 }
                 else {
-                    zipHandles[parsedMessage.id].append(Buffer.from(parsedMessage.content), { name: parsedMessage.file })
+                    zipHandles[parsedMessage.id].addFile(parsedMessage.file, bufferToStream(Buffer.from(parsedMessage.content)))
                 }
                 ws.send(JSON.stringify({
                     type: parsedMessage.type + '_response',
@@ -227,7 +229,7 @@ wss.on('connection', (ws) => {
                 }
                 fileHandles[fileId] = new Readable()
                 fileHandles[fileId]._read = function noop() { }
-                zipHandles[parsedMessage.id].append(fileHandles[fileId], { name: parsedMessage.file })
+                zipHandles[parsedMessage.id].addFile(parsedMessage.file, fileHandles[fileId])
                 ws.send(JSON.stringify({
                     type: parsedMessage.type + '_response',
                     requestId: parsedMessage.requestId,
@@ -247,7 +249,7 @@ wss.on('connection', (ws) => {
                     fileHandles[parsedMessage.id].push(parsedMessage.content, 'base64')
                 }
                 else {
-                    fileHandles[parsedMessage.id].append(parsedMessage.content)
+                    fileHandles[parsedMessage.id].push(parsedMessage.content)
                 }
                 ws.send(JSON.stringify({
                     type: parsedMessage.type + '_response',
@@ -292,7 +294,7 @@ wss.on('connection', (ws) => {
                         break
                     }
                     const bufferData = Buffer.from(response.data)
-                    zipHandles[parsedMessage.id].append(bufferData, { name: parsedMessage.file })
+                    zipHandles[parsedMessage.id].addFile(parsedMessage.file, bufferToStream(bufferData))
                     ws.send(JSON.stringify({
                         type: parsedMessage.type + '_response',
                         requestId: parsedMessage.requestId,
@@ -316,7 +318,8 @@ wss.on('connection', (ws) => {
                     }))
                     break
                 }
-                await zipHandles[parsedMessage.id].finalize()
+                await zipHandles[parsedMessage.id].close()
+                delete zipHandles[parsedMessage.id]
                 console.log(`Closed zip handle ${parsedMessage.id}`)
                 ws.send(JSON.stringify({
                     type: parsedMessage.type + '_response',
@@ -396,6 +399,14 @@ setInterval(function ping() {
         }))
     })
 }, 25000)
+
+function bufferToStream(buffer) {
+    const readable = new Readable()
+    readable._read = () => {}
+    readable.push(buffer)
+    readable.push(null)
+    return readable
+}
 
 function generateId() {
     return Math.trunc(Math.random() * 1000000000000).toString(16) + Math.trunc(Math.random() * 1000000000000).toString(16)
