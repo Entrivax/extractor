@@ -8,6 +8,8 @@ For more information, go to https://aurelia.io/docs/cli/webpack
 
 Run `npm start`, then open `http://localhost:8080`
 
+You can create a `sampleData` directory with backup data in it for live development.
+
 You can change the standard webpack configurations from CLI easily with something like this: `npm start -- --open --port 8888`. However, it is better to change the respective npm scripts or `webpack.config.js` with these options, as per your need.
 
 To enable Webpack Bundle Analyzer, do `npm run analyze` (production build).
@@ -25,3 +27,5 @@ For long time aurelia-cli user, you can still use `au run` with those arguments 
 ## Build for production
 
 Run `npm run build`, or the old way `au build --env prod`.
+
+Run `build.sh` to build the single html file in the build directory.
