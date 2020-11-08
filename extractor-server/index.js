@@ -105,7 +105,7 @@ wss.on('connection', (ws) => {
                 try {
                     if (await backupHandles[parsedMessage.backupId].fileExists(parsedMessage.path)) {
                         const stream = await backupHandles[parsedMessage.backupId].openFileStream(parsedMessage.path)
-                        zipHandles[parsedMessage.id].addFile(parsedMessage.path, stream)
+                        await zipHandles[parsedMessage.zipId].addFile(parsedMessage.path, stream)
                         ws.send(JSON.stringify({
                             type: parsedMessage.type + '_response',
                             requestId: parsedMessage.requestId,
@@ -374,8 +374,6 @@ app.use('/', (req, res) => {
                         }
                         ${data.toString('utf8')}("${req.protocol.endsWith('s') ? 'wss' : 'ws'}://${req.get('host')}")
                     })()`)
-                    console.log(toSend.toString('utf8'))
-                    console.log(toSend.byteLength)
                     res.send(toSend)
                 })
             }
