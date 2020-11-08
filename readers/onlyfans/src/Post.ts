@@ -1,4 +1,4 @@
-import { bindable } from 'aurelia-framework'
+import { bindable, observable } from 'aurelia-framework'
 import { User } from 'app'
 import tippy from 'tippy.js';
 
@@ -15,22 +15,27 @@ export class Post {
     @bindable
     users: User[]
 
+    @observable
     contentElement: HTMLDivElement
-    private _attached: boolean = false
     private _tooltips: any[]
 
     postChanged() {
-        if (this._attached) {
-            this._updateTooltips()
-        }
+        this._updateTooltips()
+    }
+
+    contentElementChanged() {
+        this._updateTooltips()
     }
 
     attached() {
         this._updateTooltips()
-        this._attached = true
     }
 
     private _updateTooltips() {
+        this.destroyTooltips()
+        if (!this.contentElement || !this.post?.content) {
+            return
+        }
         this.contentElement.innerHTML = this.post.content
         const links = this.contentElement.querySelectorAll('a')
         const tooltips = []
