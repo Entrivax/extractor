@@ -2,7 +2,6 @@ const path = require('path');
 const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const DuplicatePackageCheckerPlugin = require('duplicate-package-checker-webpack-plugin');
 const project = require('./aurelia_project/aurelia.json');
@@ -71,7 +70,7 @@ module.exports = ({ production } = {}, { extractCss, analyze, tests, hmr, port, 
         chunkFilename: production ? '[name].[chunkhash].chunk.js' : '[name].[hash].chunk.js'
     },
     optimization: {
-        runtimeChunk: true,  // separates the runtime chunk, required for long term cacheability
+        runtimeChunk: false,  // separates the runtime chunk, required for long term cacheability
         // moduleIds is the replacement for HashedModuleIdsPlugin and NamedModulesPlugin deprecated in https://github.com/webpack/webpack/releases/tag/v4.16.0
         // changes module id's to use hashes be based on the relative path of the module, required for long term cacheability
         moduleIds: 'hashed',
@@ -138,6 +137,9 @@ module.exports = ({ production } = {}, { extractCss, analyze, tests, hmr, port, 
         ]
     },
     plugins: [
+        new webpack.optimize.LimitChunkCountPlugin({
+            maxChunks: 1,
+        }),
         ...when(!tests, new DuplicatePackageCheckerPlugin()),
         new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
         new AureliaPlugin(),
@@ -161,7 +163,7 @@ module.exports = ({ production } = {}, { extractCss, analyze, tests, hmr, port, 
             inlineSource: '.(js|css)$'
         }),
         ...when(production,
-            new HtmlWebpackInlineSourcePlugin(),
+            new HtmlWebpackInlineSourcePlugin()
         ),
         // ref: https://webpack.js.org/plugins/mini-css-extract-plugin/
         ...when(extractCss, new MiniCssExtractPlugin({ // updated to match the naming conventions for the js files

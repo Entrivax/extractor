@@ -167,13 +167,7 @@ export type PostData = {
     content: string,
     responseType: 'post',
     mediaType: 'photo' | 'video',
-    media: {
-        id: number,
-        type: 'photo' | 'video',
-        preview: string,
-        full: string,
-        source: any
-    },
+    media: PostMedia[],
     linkedPosts: PostData[],
     linkedUsers: User[],
     price: number | null,
@@ -185,4 +179,12 @@ export type PostData = {
     commentsCount: number
     favoritesCount: number
     tipsAmount: number
+}
+
+export type PostMedia = {
+    id: number,
+    type: 'photo' | 'video',
+    preview: string,
+    full: string,
+    source: any
 }

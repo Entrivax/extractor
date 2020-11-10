@@ -7,6 +7,11 @@ export function configure (aurelia: Aurelia) {
     aurelia.use
         .standardConfiguration()
         .feature(PLATFORM.moduleName('resources/index'))
+        .plugin(PLATFORM.moduleName('aurelia-dialog'), config => {
+            config
+                .useDefaults()
+                .useCSS('')
+        })
 
     aurelia.use.developmentLogging(environment.debug ? 'debug' : 'warn')
 

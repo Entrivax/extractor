@@ -1,5 +1,5 @@
 <template>
-    <a if.bind="media[0].type === 'photo'" class="w-full" href.bind="media[0].full" target="_blank">
+    <a if.bind="media[0].type === 'photo'" class="w-full" href.bind="media[0].full" target="_blank" click.delegate="openMedia(0, $event)">
         <img class="w-full post-image ${ !isNested ? (media.length !== 1 ? 'md:rounded-md' : 'md:rounded-t-md') : '' }" src.bind="media[0].preview">
     </a>
     <div if.bind="media[0].type === 'video' || media[0].type === 'gif'" class="relative overflow-hidden ${ !isNested ? (media.length !== 1 ? 'md:rounded-md' : 'md:rounded-t-md') : '' }">
@@ -7,8 +7,13 @@
         <video class="w-full" poster.bind="media[0].preview" src.bind="media[0].full" loop.bind="media[0].type === 'gif' ? 'loop' : undefined" controls></video>
     </div>
     <div class="thumbnails-carousel mt-1 pb-1" if.bind="media.length > 1">
-        <a repeat.for="image of media | from: 1" href.bind="image.full" target="_blank">
+        <a repeat.for="image of media | from: 1" href.bind="image.full" target="_blank" click.delegate="openMedia($index + 1, $event)" class="relative">
             <img class="w-auto h-32 max-w-none md:rounded-md" src.bind="image.preview">
+            <div if.bind="media.type === 'video' || media.type === 'gif'" class="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-2xl">
+                <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-play-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 2px black)">
+                    <path d="M11.596 8.697l-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/>
+                </svg>
+            </div>
         </a>
     </div>
     <div if.bind="!post.canViewMedia" class="background-image bg-cover bg-center p-4 ${ media.length !== 1 ? 'md:rounded-md' : 'md:rounded-b-md'}">

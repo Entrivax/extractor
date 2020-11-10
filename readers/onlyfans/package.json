@@ -10,6 +10,7 @@
   "dependencies": {
     "aurelia-animator-css": "^1.0.4",
     "aurelia-bootstrapper": "^2.3.3",
+    "aurelia-dialog": "^2.0.0",
     "moment": "^2.27.0",
     "tailwindcss": "^1.6.2",
     "tippy.js": "^6.2.6"

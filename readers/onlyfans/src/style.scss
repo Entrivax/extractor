@@ -277,4 +277,64 @@ p {
     background-image: url('./assets/onlyfans background-dark.svg');
 }
 
+ux-dialog-overlay {
+    bottom: 0;
+    left: 0;
+    position: fixed;
+    top: 0;
+    right: 0;
+    opacity: 0;
+
+    &.active {
+        opacity: 1;
+    }
+}
+
+ux-dialog-container {
+    display: block;
+    transition: opacity .2s linear;
+    opacity: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    -webkit-overflow-scrolling: touch;
+
+    &.active {
+        opacity: 1;
+    }
+
+    & > div > div {
+        width: 100%;
+        display: block;
+        min-width: 300px;
+    }
+
+    &, & > div, & > div > div {
+        /**
+        * Prevent Chrome on Windows from adding a focus outline. For details, see
+        * https://github.com/twbs/bootstrap/pull/10951
+        */
+        outline: 0;
+    }
+}
+
+.ux-dialog-open {
+    overflow: hidden;
+}
+
+ux-dialog-overlay.active {
+    background-color: black;
+    opacity: .5;
+}
+
+.media-viewer {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+}
+
 @import './assets/emojis.scss';
