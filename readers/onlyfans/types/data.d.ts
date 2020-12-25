@@ -54,3 +54,44 @@ declare type PostMedia = {
     full: string,
     source: any
 }
+
+declare type HighlightData = {
+    id: number,
+    title: string,
+    cover: string,
+    stories: StoryData[]
+}
+
+declare type StoryData = {
+    id: number
+    createdAt: string
+    media: [{
+        id: number
+        type: 'photo' | 'video'
+        files: {
+            source: {
+                url: string
+                width: number
+                height: number
+                duration: number
+                sources: { [size: string]: string | null }
+            }
+            squarePreview: {
+                url: string
+                width: number
+                height: number
+                sources: { [size: string]: string | null }
+            }
+            thumb: {
+                url: string
+                width: number
+                height: number
+            }
+            preview: {
+                url: string
+                width: number
+                height: number
+            }
+        }
+    }]
+}

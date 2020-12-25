@@ -1,3 +1,4 @@
+import * as _ from "lodash"
 import * as moment from "moment"
 
 export function cleanLink(link) {
@@ -69,5 +70,50 @@ export function processPostContent(content: string) {
         return htmlDoc.body.innerHTML
     } catch (err) {
         return content
+    }
+}
+
+export function highlightFromHighlightData(highlight: any): HighlightData {
+    return {
+        cover: cleanLink(highlight.cover),
+        id: highlight.id,
+        stories: highlight.stories.map(storyFromStoryData),
+        title: highlight.title
+    }
+}
+
+export function storyFromStoryData(story: any): StoryData {
+    return {
+        createdAt: moment(story.createdAt).format('lll'),
+        id: story.id,
+        media: [(story.media as any[]).map(m => ({
+            id: m.id,
+            files: {
+                preview: {
+                    height: m.files.preview.height,
+                    width: m.files.preview.width,
+                    url: cleanLink(m.files.preview.url)
+                },
+                thumb: {
+                    height: m.files.thumb.height,
+                    width: m.files.thumb.width,
+                    url: cleanLink(m.files.thumb.url)
+                },
+                squarePreview: {
+                    height: m.files.squarePreview.height,
+                    width: m.files.squarePreview.width,
+                    url: cleanLink(m.files.squarePreview.url),
+                    sources: _.mapValues(m.files.squarePreview.sources, cleanLink)
+                },
+                source: {
+                    height: m.files.source.height,
+                    width: m.files.source.width,
+                    url: cleanLink(m.files.source.url),
+                    duration: m.files.source.duration,
+                    sources: _.mapValues(m.files.source.sources, cleanLink)
+                },
+            },
+            type: m.type
+        }))[0]]
     }
 }
