@@ -29,6 +29,20 @@ body {
     }
 }
 
+select {
+    color: var(--text-color);
+    background: var(--bg-color);
+    border-width: 1px;
+}
+.dark-mode select {
+    color: var(--dark-mode-text-color);
+    background: var(--dark-mode-bg-color);
+}
+
+.bg-active {
+    background-color: rgba(138, 150, 163, 0.2);
+}
+
 .tippy-box {
     color: var(--text-color);
     background: var(--bg-color);

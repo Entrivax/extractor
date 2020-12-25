@@ -1,5 +1,6 @@
 import { cleanLink } from "utils"
 import * as moment from "moment";
+import { observable } from 'aurelia-framework'
 
 export class App {
     posts: PostData[] = []
@@ -8,6 +9,23 @@ export class App {
     creator: User
     users: User[]
     creatorCardInfo: CreatorCardInfo
+    @observable
+    elementsPerPage: number
+    page: number
+
+    get pagesCount() {
+        return this.elementsPerPage && this.posts ? Math.ceil(this.posts.length / this.elementsPerPage) : 0
+    }
+
+    elementsPerPageChanged(newValue: number, oldValue: number) {
+        if (newValue == null) {
+            this.page = 0
+        } else {
+            const firstElementNum = (oldValue || 0) * (this.page || 0)
+            const newFirstElementPage = Math.floor(firstElementNum / newValue)
+            this.page = newFirstElementPage
+        }
+    }
 
     switchColorMode() {
         let isCurrentDarkMode = document.body.classList.contains('dark-mode')
@@ -27,7 +45,8 @@ export class App {
             return this
         }
         try {
-            const posts: any[] = data.data;
+            const posts: any[] = data.data
+            this.elementsPerPage = 50
 
             this.coverData = {
                 name: data.creator.name,

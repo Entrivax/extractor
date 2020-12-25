@@ -1,0 +1,7 @@
+<template>
+    <div class="flex flex-row items-center justify-center">
+        <div class="py-1 px-2 cursor-pointer border-t border-l border-b ${ $first ? 'rounded-l' : '' }" repeat.for="i of pagesBackward" click.delegate="page = page - (pagesBackward - i)">${ page - (pagesBackward - i) + 1 }</div>
+        <div class="py-1 px-2 border bg-active ${ page === 0 ? 'rounded-l' : '' } ${ page === totalPages - 1 ? 'rounded-r' : '' } ">${ page + 1 }</div>
+        <div class="py-1 px-2 cursor-pointer border-t border-r border-b ${ $last ? 'rounded-r' : '' }" repeat.for="i of pagesForward" click.delegate="page = page + i + 1">${ page + i + 2 }</div>
+    </div>
+</template>
