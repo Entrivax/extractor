@@ -41,6 +41,9 @@ const backupHandles = {}
 
 wss.on('connection', (ws) => {
     ws.isAlive = true;
+    ws.on('error', (err) => {
+        console.error('Websocket error', err)
+    })
     ws.on('message', async (message) => {
         const parsedMessage = JSON.parse(message)
 
@@ -396,7 +399,7 @@ setInterval(function ping() {
             requestId: id
         }))
     })
-}, 25000)
+}, 10000)
 
 function bufferToStream(buffer) {
     const readable = new Readable()
