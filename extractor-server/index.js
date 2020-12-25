@@ -23,6 +23,12 @@ const args = require('yargs')
         type: 'boolean',
         description: 'specify if the output must be a zip file'
     })
+    .option('output', {
+        alias: 'o',
+        default: './',
+        description: 'the directory to use to save output files',
+        type: 'string'
+    })
     .argv
 
 /**
@@ -186,7 +192,12 @@ wss.on('connection', (ws) => {
                     id = generateId()
                 }
                 const date = moment()
-                const zipPath = __dirname + `/${parsedMessage.prefix || 'backup'}_${date.format('YYYY-MM-DD_HH-mm-ss')}_${id}${args.zip ? '.zip' : ''}`
+                try {
+                    await fs.promises.access(args.output)
+                } catch (e) {
+                    await fs.promises.mkdir(args.output, { recursive: true })
+                }
+                const zipPath = path.join(args.output, `${parsedMessage.prefix || 'backup'}_${date.format('YYYY-MM-DD_HH-mm-ss')}_${id}${args.zip ? '.zip' : ''}`)
 
                 const archive = await backupInterface.createBackup(zipPath, args.zip)
                 zipHandles[id] = archive
@@ -387,6 +398,7 @@ app.use('/', (req, res) => {
 
 server.listen(args.port, () => {
     console.log('Server started')
+    console.log(`Output directory is: ${path.resolve(args.output)}`)
     console.log('You can now extract data by injecting the following code:')
     console.log(`${fs.readFileSync(path.join(__dirname, 'toInject.js'))}(${args.port})`)
 })
