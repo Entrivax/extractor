@@ -153,8 +153,8 @@ module.exports = {
                 const backupHighlight = backupHighlightsDictionnary[id]
                 const patchHighlight = patchHighlightsDictionnary[id]
 
-                const newHighlight = _.cloneDeep(patchHighlight)
-                newHighlight.stories = patchStoriesFromPatches(backupHighlight.stories, newHighlight.stories) // not optimized, 'cuz it's cloning two time patchHighlight.stories, but idc for now
+                const newHighlight = _.cloneDeep(patchHighlight || backupHighlight)
+                newHighlight.stories = patchStoriesFromPatches(backupHighlight?.stories, newHighlight?.stories) // not optimized, 'cuz it's cloning two time patchHighlight.stories, but idc for now
                 addFile(newHighlight.cover)
 
                 return newHighlight
