@@ -357,11 +357,12 @@
                     }
                 })
 
-                console.log("Fetching referenced files from backup")
-                statusReporter?.setStatusText('Fetching referenced files from backup')
                 let diffFiles = _.difference(filesInBackup, Object.keys(filesUrls))
+                console.log(`Fetching referenced files from backup (${diffFiles.length} files)`)
+                statusReporter?.setStatusText('Fetching referenced files from backup')
                 for (let i = 0; i < diffFiles.length; i++) {
                     await tryImportFileFromBackup(ws, loadedBackupId, zipId, diffFiles[i])
+                    statusReporter?.setStatusText(`Fetching referenced files from backup (${i + 1}/${diffFiles.length})`)
                 }
             }
 
