@@ -1,5 +1,5 @@
 import { bindable } from 'aurelia-framework'
-import { CoverData } from './app'
+import { CoverData } from './Feed'
 
 export class Cover {
     @bindable

@@ -1,4 +1,5 @@
 import { bindable } from 'aurelia-framework'
+import { Router } from 'aurelia-router'
 
 export class Pagination {
     @bindable
@@ -7,6 +8,10 @@ export class Pagination {
     totalPages: number
     @bindable
     navigationPages: number
+    @bindable
+    router: Router
+    @bindable
+    route: string
 
     pagesBackward: number
     pagesForward: number
@@ -19,6 +24,10 @@ export class Pagination {
     }
     navigationPagesChanged() {
         this.updatePages()
+    }
+
+    changePage(page: number) {
+        this.router.navigateToRoute(this.route, { ...this.router.currentInstruction.queryParams, page: (page + 1).toString() })
     }
 
     private updatePages() {

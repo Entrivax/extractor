@@ -1,6 +1,6 @@
 import { autoinject } from 'aurelia-framework'
 import { DialogController } from 'aurelia-dialog'
-import { PostMedia } from 'app'
+import { PostMedia } from 'Feed'
 
 @autoinject
 export class MediaViewer {
