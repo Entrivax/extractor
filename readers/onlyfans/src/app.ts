@@ -58,4 +58,14 @@ export class App {
         
         document.title = `${data.creator.name} - OnlyFans Backup`
     }
+
+    switchColorMode() {
+        let isCurrentDarkMode = document.body.classList.contains('dark-mode')
+        if (isCurrentDarkMode) {
+            document.body.classList.remove('dark-mode')
+        } else {
+            document.body.classList.add('dark-mode')
+        }
+        localStorage.setItem('OnlyFans-backup-color-mode', !isCurrentDarkMode ? 'dark' : 'light')
+    }
 }

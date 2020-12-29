@@ -33,16 +33,6 @@ export class Feed {
 
     constructor(public router: Router) { }
 
-    switchColorMode() {
-        let isCurrentDarkMode = document.body.classList.contains('dark-mode')
-        if (isCurrentDarkMode) {
-            document.body.classList.remove('dark-mode')
-        } else {
-            document.body.classList.add('dark-mode')
-        }
-        localStorage.setItem('OnlyFans-backup-color-mode', !isCurrentDarkMode ? 'dark' : 'light')
-    }
-
     determineActivationStrategy() {
         return activationStrategy.invokeLifecycle
     }
