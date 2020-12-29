@@ -1,6 +1,5 @@
 import { PLATFORM } from 'aurelia-pal';
 import { bindable, autoinject } from 'aurelia-framework'
-import { PostData, PostMedia, User } from 'Feed'
 import { DialogService } from 'aurelia-dialog'
 import { MediaViewer } from './MediaViewer'
 PLATFORM.moduleName('./MediaViewer')

@@ -1,5 +1,4 @@
 import { bindable, observable } from 'aurelia-framework'
-import { User } from 'Feed'
 import tippy from 'tippy.js';
 
 export class Post {
