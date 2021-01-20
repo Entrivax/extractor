@@ -161,15 +161,45 @@
             let userIds = []
             scrapUserMedia(creator)
             if (stories?.length > 0) {
+                const invalidStories = []
                 stories.forEach(story => {
-                    scrapStoryInfo(story)
+                    for (let i = 0; i < story.media.length; i++) {
+                        let media = story.media[i]
+                        if (!media.files?.source?.url) {
+                            story.media.splice(i, 1)
+                            i--
+                        }
+                    }
+                    if (story.media.length < 1) {
+                        invalidStories.push(story)
+                    } else {
+                        scrapStoryInfo(story)
+                    }
+                })
+                invalidStories.forEach(story => {
+                    stories.splice(stories.indexOf(story), 1)
                 })
             }
             highlights?.forEach((highlightInfo) => {
                 addFile(highlightInfo.cover)
                 highlightInfo.cover = cleanUrl(highlightInfo.cover)
+                const invalidStories = []
                 highlightInfo?.stories.forEach(story => {
-                    scrapStoryInfo(story)
+                    for (let i = 0; i < story.media.length; i++) {
+                        let media = story.media[i]
+                        if (!media.files?.source?.url) {
+                            story.media.splice(i, 1)
+                            i--
+                        }
+                    }
+                    if (story.media.length < 1) {
+                        invalidStories.push(story)
+                    } else {
+                        scrapStoryInfo(story)
+                    }
+                })
+                invalidStories.forEach(story => {
+                    highlightInfo?.stories.splice(highlightInfo.stories.indexOf(story), 1)
                 })
             })
             friends.forEach(friend => {
