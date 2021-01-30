@@ -121,6 +121,7 @@ body {
         }
         .message-container {
             grid-area: messages;
+            min-width: 0;
             .message-background {
                 background-color: rgba(138, 150, 163, 0.12);
                 border-radius: 0.375rem;
