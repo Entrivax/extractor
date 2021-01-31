@@ -29,7 +29,7 @@ To download data for a given user:
 1. Copy the script outputed by the server in the console to the browser console and press `Enter`
 1. Stay on the page until the script says `Downloading finished x/x (100%)`
 
-Now, a file named `onlyfans_{date}_{random_id}.zip` should exist in the `extractor-server` directory containing the backup.
+Now, a file named `onlyfans_{username}_{date}_{random_id}.zip` should exist in the `extractor-server` directory containing the backup.
 
 To read the backup:
 1. Extract the backup zip file in an empty folder
@@ -45,11 +45,11 @@ To download data for a given chat:
 1. Copy the script outputed by the server in the console to the browser console and press `Enter`
 1. Stay on the page until the script says `Downloading finished x/x (100%)`
 
-Now, a file named `onlyfans-messagesg_{date}_{random_id}.zip` should exist in the `extractor-server` directory containing the backup.
+Now, a file named `onlyfans-messages_{date}_{random_id}.zip` should exist in the `extractor-server` directory containing the backup.
 
 To read the backup:
 1. Extract the backup zip file in an empty folder
-1. Copy the file `index.html` from the `readers/onlyfans-messages/build` directory to the folder used for step 1
+1. Copy the file `index.html` from the `readers/onlyfans/build` directory to the folder used for step 1
 1. Double click on the copied `index.html` file
 
 WARNING: The script was only tested when logged and subcribed to the user.

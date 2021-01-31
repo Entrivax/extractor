@@ -13,6 +13,7 @@ declare type User = {
     username: string,
     isVerified: boolean,
     coverUrl: string,
+    isMe: boolean,
 }
 
 declare type CreatorCardInfo = {
@@ -94,4 +95,27 @@ declare type StoryData = {
             }
         }
     }]
+}
+
+declare type HeaderData = {
+    name: string,
+}
+
+declare type MessageData = {
+    id: number,
+    canPurchase: boolean,
+    isFree: boolean,
+    content: string,
+    media: any,
+    user: User,
+    price: number,
+    preview: any[],
+    createdAt: moment.Moment,
+    wasEdited: boolean,
+}
+
+declare type Messages = {
+    fromUser: User,
+    messages: MessageData[],
+    showDate: boolean
 }

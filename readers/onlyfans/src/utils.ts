@@ -15,7 +15,8 @@ export function userFromUserData(user: any): User {
         name: user.name,
         username: user.username,
         isVerified: user.isVerified,
-        coverUrl: cleanLink(user.header)
+        coverUrl: cleanLink(user.header),
+        isMe: false
     }
 }
 

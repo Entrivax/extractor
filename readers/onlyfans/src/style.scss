@@ -223,6 +223,61 @@ p {
     background-color: rgba(0, 0, 0, 0.5);
 }
 
+.messages-group-container {
+    .message {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-template-areas: "avatar messages" ". date";
+
+        .avatar-container {
+            grid-area: avatar;
+            .avatar {
+                width: 2.25rem;
+                height: 2.25rem;
+            }
+        }
+        .fake-avatar-container {
+            grid-area: avatar;
+            width: 2.25rem;
+            height: 2.25rem;
+        }
+        .message-container {
+            grid-area: messages;
+            min-width: 0;
+            .message-background {
+                background-color: rgba(138, 150, 163, 0.12);
+                border-radius: 0.375rem;
+                border-bottom-left-radius: 0;
+            }
+
+        }
+        &:not(:first-child) .message-container .message-background {
+            border-top-left-radius: 0;
+        }
+        .date-container {
+            grid-area: date;
+        }
+    }
+    &.from-me {
+        .message {
+            grid-template-columns: 1fr auto;
+            .message-container .message-background {
+                background-color: rgba(0, 175, 240, 0.12);
+                border-radius: 0.375rem;
+                border-bottom-right-radius: 0;
+    
+            }
+            .avatar-container {
+                padding-left: 2rem;
+                align-items: flex-end;
+            }
+            &:not(:first-child) .message-container .message-background {
+                border-top-right-radius: 0;
+            }
+        }
+    }
+}
+
 /**
  * Spinner from https://tobiasahlin.com/spinkit/
  */

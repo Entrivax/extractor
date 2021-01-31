@@ -6,5 +6,8 @@ export function configure (config: FrameworkConfiguration) {
         PLATFORM.moduleName('./DurationValueConverter'),
         PLATFORM.moduleName('./FromValueConverter'),
         PLATFORM.moduleName('./PagingValueConverter'),
+
+        // Components
+        PLATFORM.moduleName('./components/MediaDisplay'),
     ]);
 }

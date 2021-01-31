@@ -19,5 +19,13 @@ export function configure (aurelia: Aurelia) {
         aurelia.use.plugin(PLATFORM.moduleName('aurelia-testing'))
     }
 
-    aurelia.start().then(() => aurelia.setRoot(PLATFORM.moduleName('app')))
+    let viewToUse = PLATFORM.moduleName('feed-view/app') // default case
+
+    if ((window as any).onlyFansData !== undefined) {
+        viewToUse = PLATFORM.moduleName('feed-view/app')
+    } else if ((window as any).onlyFansMessagesData !== undefined) {
+        viewToUse = PLATFORM.moduleName('messages-view/app')
+    }
+
+    aurelia.start().then(() => aurelia.setRoot(viewToUse))
 }
