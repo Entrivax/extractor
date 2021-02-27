@@ -39,7 +39,7 @@
                 heartbeat(ws, parsedMessage)
             }
         })
-    
+
         async function getCreatorInfo() {
             console.log("Downloading creator info")
             statusReporter?.setStatusText('Downloading creator info')
@@ -54,17 +54,18 @@
                         }
                     }
                 }
-                xhr.open('GET', `https://onlyfans.com/api2/v2/users${location.pathname}?app-token=${appToken}`)
+                xhr.open('GET', `https://onlyfans.com/api2/v2/users${location.pathname}`)
                 xhr.setRequestHeader('Accept', 'application/json')
+                xhr.setRequestHeader('app-token', appToken)
                 xhr.send()
             })
             console.log("Finished downloading creator info")
             statusReporter?.setStatusText('Finished downloading creator info')
             return creator
         }
-    
+
         async function extractFromCurrentOnlyfansPage(ws, zipId, creator, loadedBackupId) {
-            let nextUrl = `https://onlyfans.com/api2/v2/users/${creator.id}/posts?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&pinned=0&app-token=${appToken}`
+            let nextUrl = `https://onlyfans.com/api2/v2/users/${creator.id}/posts?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&pinned=0&format=infinite`
             let data = []
             let pinnedPosts = []
             let archivedPosts = []
@@ -75,9 +76,9 @@
                 let response = await makeRequest(nextUrl, 'GET', undefined)
 
                 let responseObj = JSON.parse(response.responseText)
-                nextUrl = responseObj && responseObj.length >= 10 ? `https://onlyfans.com/api2/v2/users/${creator.id}/posts?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&beforePublishTime=${responseObj[responseObj.length - 1].postedAtPrecise}&pinned=0&app-token=${appToken}` : null
+                nextUrl = responseObj?.hasMore ? `https://onlyfans.com/api2/v2/users/${creator.id}/posts?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&beforePublishTime=${responseObj.list[responseObj.list.length - 1].postedAtPrecise}&pinned=0&format=infinite` : null
                 if (responseObj) {
-                    data.push(...responseObj)
+                    data.push(...responseObj.list)
                 }
             }
 
@@ -85,14 +86,14 @@
 
             console.log("Downloading archived posts info")
             statusReporter?.setStatusText('Downloading archived posts info')
-            nextUrl = `https://onlyfans.com/api2/v2/users/${creator.id}/posts/archived?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&pinned=0&app-token=${appToken}`
+            nextUrl = `https://onlyfans.com/api2/v2/users/${creator.id}/posts/archived?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&pinned=0&format=infinite`
             while (nextUrl != null) {
                 let response = await makeRequest(nextUrl, 'GET', undefined)
 
                 let responseObj = JSON.parse(response.responseText)
-                nextUrl = responseObj && responseObj.length >= 10 ? `https://onlyfans.com/api2/v2/users/${creator.id}/posts/archived?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&beforePublishTime=${responseObj[responseObj.length - 1].postedAtPrecise}&pinned=0&app-token=${appToken}` : null
+                nextUrl = responseObj?.hasMore ? `https://onlyfans.com/api2/v2/users/${creator.id}/posts/archived?limit=10&order=publish_date_desc&skip_users=all&skip_users_dups=1&beforePublishTime=${responseObj.list[responseObj.list.length - 1].postedAtPrecise}&pinned=0&format=infinite` : null
                 if (responseObj) {
-                    archivedPosts.push(...responseObj)
+                    archivedPosts.push(...responseObj.list)
                 }
             }
             console.log("Finished downloading archived posts info")
@@ -100,7 +101,7 @@
             if (creator.hasPinnedPosts) {
                 console.log("Downloading pinned posts info")
                 statusReporter?.setStatusText('Downloading pinned posts info')
-                let response = await makeRequest(`https://onlyfans.com/api2/v2/users/${creator.id}/posts?&order=publish_date_desc&skip_users=all&skip_users_dups=1&pinned=1&app-token=${appToken}`, 'GET', undefined)
+                let response = await makeRequest(`https://onlyfans.com/api2/v2/users/${creator.id}/posts?&order=publish_date_desc&skip_users=all&skip_users_dups=1&pinned=1`, 'GET', undefined)
 
                 let responseObj = JSON.parse(response.responseText)
                 if (responseObj) {
@@ -114,7 +115,7 @@
             {
                 console.log("Downloading stories info")
                 statusReporter?.setStatusText('Downloading stories info')
-                let response = await makeRequest(`https://onlyfans.com/api2/v2/users/${creator.id}/stories?unf=1&app-token=${appToken}`, 'GET', undefined)
+                let response = await makeRequest(`https://onlyfans.com/api2/v2/users/${creator.id}/stories?unf=1`, 'GET', undefined)
                 stories = JSON.parse(response.responseText)
                 console.log("Finished downloading stories info")
             }
@@ -123,12 +124,12 @@
             {
                 console.log("Downloading highlights info")
                 statusReporter?.setStatusText('Downloading highlights info')
-                let response = await makeRequest(`https://onlyfans.com/api2/v2/users/${creator.id}/stories/highlights?unf=1&app-token=${appToken}`, 'GET', undefined)
+                let response = await makeRequest(`https://onlyfans.com/api2/v2/users/${creator.id}/stories/highlights?unf=1`, 'GET', undefined)
                 let tempHighlights = JSON.parse(response.responseText)
                 if (tempHighlights?.length > 0) {
                     highlights = []
                     for (let i = 0; i < tempHighlights.length; i++) {
-                        let highlightInfo = JSON.parse((await makeRequest(`https://onlyfans.com/api2/v2/stories/highlights/${tempHighlights[i].id}?unf=1&app-token=${appToken}`, 'GET', undefined)).responseText)
+                        let highlightInfo = JSON.parse((await makeRequest(`https://onlyfans.com/api2/v2/stories/highlights/${tempHighlights[i].id}?unf=1`, 'GET', undefined)).responseText)
                         highlights.push(highlightInfo)
                     }
                 }
@@ -143,7 +144,7 @@
                 let downloadMore = true
                 let offset = 0
                 while (downloadMore) {
-                    let response = await makeRequest(`https://onlyfans.com/api2/v2/users/${creator.id}/friends?limit=10&offset=${offset}&app-token=${appToken}`, 'GET', undefined)
+                    let response = await makeRequest(`https://onlyfans.com/api2/v2/users/${creator.id}/friends?limit=10&offset=${offset}`, 'GET', undefined)
                     let tempFriends = JSON.parse(response.responseText)
                     friends.push(...tempFriends)
                     if (tempFriends.length < 10) {
@@ -344,9 +345,10 @@
                             }
                         }
                     }
-                    xhr.open('POST', `https://onlyfans.com/api2/v2/users/list?app-token=${appToken}`)
+                    xhr.open('POST', `https://onlyfans.com/api2/v2/users/list`)
                     xhr.setRequestHeader('Accept', 'application/json, text/plain, */*')
                     xhr.setRequestHeader('content-type', 'application/json')
+                    xhr.setRequestHeader('app-token', appToken)
                     xhr.send(JSON.stringify({
                         m: userIds
                     }))
@@ -442,7 +444,7 @@
             this.addProgress = (text) => {
                 return new ProgressBar(text)
             }
-    
+
             function remove() {
                 if (typeof onClose === 'function') {
                     try {
@@ -453,7 +455,7 @@
                 }
                 document.body.removeChild(container)
             }
-    
+
             function ProgressBar(text) {
                 const progressContainer = createElement('div', { marginBottom: '2px' })
                 const textContainer = createElement('div', { overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', whiteSpace: 'nowrap' })
@@ -489,7 +491,7 @@
                 progressBarContainer.appendChild(progressBarFilled)
                 progressBarContainer.appendChild(progressBarFiller)
                 progressContainer.appendChild(progressBarContainer)
-    
+
                 this.setProgress = function(progress) {
                     if (progress === undefined) {
                         progressBarIndeterminate.style.display = 'block'
@@ -500,15 +502,15 @@
                         progressBarFilled.style.width = `${progress * 100}%`
                     }
                 }
-    
+
                 this.end = function() {
                     container.removeChild(progressContainer)
                 }
-    
+
                 container.appendChild(progressContainer)
             }
         }
-    
+
         function createElement(tagName, style) {
             const el = document.createElement(tagName)
             if (style) {
@@ -519,7 +521,7 @@
             }
             return el
         }
-    
+
         function makeRequest(url, method, body) {
             return new Promise((resolve, reject) => {
                 let xhr = new XMLHttpRequest()
@@ -534,39 +536,40 @@
                 }
                 xhr.open(method, url)
                 xhr.setRequestHeader('Accept', 'application/json')
+                xhr.setRequestHeader('app-token', appToken)
                 xhr.send(body)
             })
         }
-    
+
         async function downloadFiles(ws, zipId, files, loadedBackupId) {
             const parallelDownloadsCount = 6
             const filesStack = Object.keys(files)
             const filesCount = filesStack.length
             const runningPromises = []
-    
+
             statusReporter?.setStatusText(`Downloading... (0/${filesCount} | 0%)`)
             for (let i = 0; i < parallelDownloadsCount && filesStack.length > 0; i++) {
                 const zipUrl = filesStack.splice(0, 1)[0]
                 runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, zipUrl, files[zipUrl], loadedBackupId)))
             }
-    
+
             while (filesStack.length > 0) {
                 await Promise.race(runningPromises)
-    
+
                 updateStatus()
-    
+
                 const zipUrl = filesStack.splice(0, 1)[0]
                 runningPromises.push(selfRemovePromise(downloadFile(ws, zipId, zipUrl, files[zipUrl], loadedBackupId)))
             }
-    
+
             while (runningPromises.length > 0) {
                 await Promise.race(runningPromises)
-    
+
                 updateStatus()
             }
-    
+
             statusReporter?.setStatusText(`Downloading finished (${filesCount} files) | Total downloaded: ${formatSize(totalDownloaded)}${downloadErrors.length > 0 ? ` | Download errors: ${downloadErrors.length}` : ''}`)
-    
+
             function selfRemovePromise(promise) {
                 const self = new Promise(resolve => {
                     promise.catch(() => {}).then(() => {
@@ -579,7 +582,7 @@
                 })
                 return self
             }
-    
+
             function updateStatus() {
                 let downloadedFiles = filesCount - (filesStack.length + runningPromises.length)
                 statusReporter?.setStatusText(`Downloading... (${downloadedFiles}/${filesCount} | ${Math.round(((100 * downloadedFiles / filesCount) + Number.EPSILON) * 100) / 100}%) | Total downloaded: ${formatSize(totalDownloaded)}${downloadErrors.length > 0 ? ` | Download errors: ${downloadErrors.length}` : ''}`)
@@ -597,7 +600,7 @@
                 return `${size} B`
             }
         }
-    
+
         async function downloadFile(ws, zipId, zipUrl, url, backupId) {
             const progressBar = statusReporter?.addProgress(url)
             let excep = null
@@ -644,7 +647,7 @@
                             xhr.send()
                         })
                         files.push(zipUrl)
-    
+
                         var responseLength = new Uint8Array(response).byteLength;
                         if (responseLength > 500000) {
                             const { fileId } = await openFileStream(ws, zipId, zipUrl)
@@ -673,7 +676,7 @@
                 throw excep
             }
             return zipUrl
-    
+
             function _arrayBufferToBase64(buffer, start, length) {
                 var binary = '';
                 var bytes = new Uint8Array(buffer);
@@ -684,7 +687,7 @@
                 return window.btoa(binary);
             }
         }
-    
+
         function openZip(ws, prefix) {
             return new Promise((resolve) => {
                 sendMessage(ws, {
@@ -741,7 +744,7 @@
                 }, (data) => resolve(data))
             })
         }
-    
+
         function appendFile(ws, zipId, filePath, fileData, isBase64) {
             return new Promise((resolve) => {
                 sendMessage(ws, {
@@ -753,7 +756,7 @@
                 }, (data) => resolve(data))
             })
         }
-    
+
         function openFileStream(ws, zipId, filePath) {
             return new Promise((resolve) => {
                 sendMessage(ws, {
@@ -763,7 +766,7 @@
                 }, (data) => resolve(data))
             })
         }
-    
+
         function appendToFileStream(ws, fileId, fileData, isBase64) {
             return new Promise((resolve) => {
                 sendMessage(ws, {
@@ -774,7 +777,7 @@
                 }, (data) => resolve(data))
             })
         }
-    
+
         function closeFileStream(ws, fileId) {
             return new Promise((resolve) => {
                 sendMessage(ws, {
@@ -783,7 +786,7 @@
                 }, (data) => resolve(data))
             })
         }
-    
+
         function appendFileFromUrl(ws, zipId, filePath, url) {
             return new Promise((resolve, reject) => {
                 sendMessage(ws, {
@@ -800,12 +803,12 @@
                 })
             })
         }
-    
-    
+
+
         function generateId() {
             return Math.trunc(Math.random() * 1000000000000).toString(16) + Math.trunc(Math.random() * 1000000000000).toString(16)
         }
-    
+
         function sendMessage(ws, message, onResponse) {
             let id = generateId()
             message.requestId = id
@@ -821,7 +824,7 @@
             }
             ws.send(JSON.stringify(message))
         }
-    
+
         function sendMessageWithStreamResponse(ws, message, onResponse) {
             let id = generateId()
             message.requestId = id

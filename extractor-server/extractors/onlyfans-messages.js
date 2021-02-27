@@ -30,8 +30,9 @@
                         }
                     }
                 }
-                xhr.open('GET', `https://onlyfans.com/api2/v2/chats/${conversationId}?skip_users=all&skip_users_dups=1&app-token=${appToken}`)
+                xhr.open('GET', `https://onlyfans.com/api2/v2/chats/${conversationId}?skip_users=all&skip_users_dups=1`)
                 xhr.setRequestHeader('Accept', 'application/json')
+                xhr.setRequestHeader('app-token', appToken)
                 xhr.send()
             })
             console.log("Finished downloading conversation info")
@@ -48,8 +49,9 @@
                         }
                     }
                 }
-                xhr.open('GET', `https://onlyfans.com/api2/v2/users/customer?app-token=${appToken}`)
+                xhr.open('GET', `https://onlyfans.com/api2/v2/users/customer`)
                 xhr.setRequestHeader('Accept', 'application/json')
+                xhr.setRequestHeader('app-token', appToken)
                 xhr.send()
             })
             let users = await new Promise((resolve, reject) => {
@@ -63,9 +65,10 @@
                         }
                     }
                 }
-                xhr.open('POST', `https://onlyfans.com/api2/v2/users/list?app-token=${appToken}`)
+                xhr.open('POST', `https://onlyfans.com/api2/v2/users/list`)
                 xhr.setRequestHeader('Accept', 'application/json, text/plain, */*')
                 xhr.setRequestHeader('content-type', 'application/json')
+                xhr.setRequestHeader('app-token', appToken)
                 xhr.send(JSON.stringify({
                     m: [currentUserInfo.id, conversationInfo.withUser.id]
                 }))
@@ -74,7 +77,7 @@
             console.log("Finished downloading users info")
 
 
-            let nextUrl = `https://onlyfans.com/api2/v2/chats/${conversationId}/messages?limit=10&offset=0&order=desc&skip_users=all&skip_users_dups=1&app-token=${appToken}`
+            let nextUrl = `https://onlyfans.com/api2/v2/chats/${conversationId}/messages?limit=10&offset=0&order=desc&skip_users=all&skip_users_dups=1`
             let data = []
             
             console.log("Downloading messages info")
@@ -92,12 +95,13 @@
                     }
                     xhr.open('GET', nextUrl)
                     xhr.setRequestHeader('Accept', 'application/json')
+                    xhr.setRequestHeader('app-token', appToken)
                     xhr.send()
                 })
         
                 let responseObj = JSON.parse(response)
-                nextUrl = responseObj && responseObj.hasMore ? `https://onlyfans.com/api2/v2/chats/${conversationId}/messages?limit=10&offset=0&id=${responseObj.list[responseObj.list.length - 1].id}&order=desc&skip_users=all&skip_users_dups=1&app-token=${appToken}` : null
-                if (responseObj && responseObj.list) {
+                nextUrl = responseObj?.hasMore ? `https://onlyfans.com/api2/v2/chats/${conversationId}/messages?limit=10&offset=0&id=${responseObj.list[responseObj.list.length - 1].id}&order=desc&skip_users=all&skip_users_dups=1` : null
+                if (responseObj?.list) {
                     data.push(...responseObj.list)
                 }
             }
