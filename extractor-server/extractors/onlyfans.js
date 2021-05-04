@@ -40,6 +40,43 @@
             }
         })
 
+        async function getMyInfo() {
+            console.log("Downloading my info")
+            statusReporter?.setStatusText('Downloading my info')
+            let me = await new Promise((resolve, reject) => {
+                let xhr = new XMLHttpRequest()
+                xhr.onreadystatechange = () => {
+                    if (xhr.readyState == 4) {
+                        if (xhr.status < 400) {
+                            resolve(JSON.parse(xhr.responseText))
+                        } else {
+                            reject()
+                        }
+                    }
+                }
+                xhr.open('GET', `https://onlyfans.com/api2/v2/users/me`)
+                xhr.setRequestHeader('Accept', 'application/json')
+                xhr.setRequestHeader('app-token', appToken)
+                xhr.setRequestHeader('time', (+new Date()).toString())
+                xhr.send()
+            })
+            console.log("Finished downloading my info")
+            statusReporter?.setStatusText('Finished downloading my info')
+            return me
+        }
+
+        async function getSign(path, time) {
+            const salt = 'rhtNVxJh2LD3Jul5MhHcAAnFMysnLlct'
+            const toEncode = [salt, time, path, userId.toString()].join('\n')
+            const sha1 = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(toEncode))
+            const sha1AsString = Array.from(new Uint8Array(sha1)).map(b => b.toString(16).padStart(2, '0')).join('')
+            // Taken from https://github.com/DIGITALCRIMINAL/OnlyFans/blob/master/apis/onlyfans/onlyfans.py after an update while deobfuscating the calculation
+            const checksumMap = [31, 13, 8, 3, 25, 8, 33, 25, 1, 23, 37, 11, 2, 29, 9, 7, 29, 30, 18, 25, 18, 21, 10, 37, 28, 35, 31, 5, 13, 31, 2, 9]
+            const checksum = checksumMap.reduce((a, b) => a + sha1AsString.charCodeAt(b), 1110)
+
+            return `6:${sha1AsString}:${checksum.toString(16)}:609184ae`
+        }
+
         async function getCreatorInfo() {
             console.log("Downloading creator info")
             statusReporter?.setStatusText('Downloading creator info')
@@ -57,7 +94,14 @@
                 xhr.open('GET', `https://onlyfans.com/api2/v2/users${location.pathname}`)
                 xhr.setRequestHeader('Accept', 'application/json')
                 xhr.setRequestHeader('app-token', appToken)
-                xhr.send()
+                xhr.setRequestHeader('user-id', userId.toString())
+                let time = +new Date()
+                xhr.setRequestHeader('time', time.toString())
+                getSign(`/api2/v2/users${location.pathname}`, time)
+                    .then(sign => {
+                        xhr.setRequestHeader('sign', sign)
+                        xhr.send()
+                    })
             })
             console.log("Finished downloading creator info")
             statusReporter?.setStatusText('Finished downloading creator info')
@@ -335,23 +379,32 @@
             let users = {}
             if (userIds.length > 0) {
                 users = await new Promise((resolve, reject) => {
-                    let xhr = new XMLHttpRequest()
-                    xhr.onreadystatechange = () => {
-                        if (xhr.readyState == 4) {
-                            if (xhr.status < 400) {
-                                resolve(JSON.parse(xhr.responseText))
-                            } else {
-                                reject()
-                            }
-                        }
-                    }
-                    xhr.open('POST', `https://onlyfans.com/api2/v2/users/list`)
-                    xhr.setRequestHeader('Accept', 'application/json, text/plain, */*')
-                    xhr.setRequestHeader('content-type', 'application/json')
-                    xhr.setRequestHeader('app-token', appToken)
-                    xhr.send(JSON.stringify({
-                        m: userIds
-                    }))
+                    // Broken for now
+                    // let xhr = new XMLHttpRequest()
+                    // xhr.onreadystatechange = () => {
+                    //     if (xhr.readyState == 4) {
+                    //         if (xhr.status < 400) {
+                    //             resolve(JSON.parse(xhr.responseText))
+                    //         } else {
+                    //             reject()
+                    //         }
+                    //     }
+                    // }
+                    // xhr.open('POST', `https://onlyfans.com/api2/v2/users/list`)
+                    // xhr.setRequestHeader('Accept', 'application/json, text/plain, */*')
+                    // xhr.setRequestHeader('content-type', 'application/json')
+                    // xhr.setRequestHeader('app-token', appToken)
+                    // xhr.setRequestHeader('user-id', userId.toString())
+                    // let time = +new Date()
+                    // xhr.setRequestHeader('time', time.toString())
+                    // getSign(`/api2/v2/users${location.pathname}`, time)
+                    //     .then(sign => {
+                    //         xhr.setRequestHeader('sign', sign)
+                    //         xhr.send(JSON.stringify({
+                    //             m: userIds
+                    //         }))
+                    //     })
+                    resolve({})
                 })
 
                 const _userIds = Object.keys(users)
@@ -537,7 +590,15 @@
                 xhr.open(method, url)
                 xhr.setRequestHeader('Accept', 'application/json')
                 xhr.setRequestHeader('app-token', appToken)
-                xhr.send(body)
+                xhr.setRequestHeader('user-id', userId)
+                let time = +new Date()
+                xhr.setRequestHeader('time', time.toString())
+                let urlObj = new URL(url)
+                getSign(`${urlObj.pathname}${urlObj.search}`, time)
+                    .then((sign) => {
+                        xhr.setRequestHeader('sign', sign)
+                        xhr.send(body)
+                    })
             })
         }
 
