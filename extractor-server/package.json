@@ -14,7 +14,7 @@
     "archiver": "^5.0.0",
     "axios": "^0.19.2",
     "express": "^4.17.1",
-    "lodash": "^4.17.20",
+    "lodash": "^4.17.21",
     "moment": "^2.27.0",
     "node-stream-zip": "^1.11.7",
     "ws": "^7.3.1",
