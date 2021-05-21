@@ -382,11 +382,30 @@ app.use('/', (req, res) => {
                     let dataMergerString = dataMerger.toString('utf8')
                         .replace(/module\.exports/, 'const dataMerger')
 
+                    let rules = null
+                    if (extractor === 'onlyfans') {
+                        // The persons behind this repo are updating the signing system way faster than me https://github.com/DATAHOARDERS/dynamic-rules
+                        // Thank you.
+                        const response = await axios.get('https://raw.githubusercontent.com/DATAHOARDERS/dynamic-rules/main/onlyfans.json', {
+                            responseType: 'arraybuffer',
+                        })
+                        const data = String.fromCharCode.apply(null, new Uint16Array(response.data))
+                        if (response.status >= 200 && response.status < 400) {
+                            try {
+                                rules = JSON.parse(data)
+                            } catch (e) {
+                                console.log(e)
+                            }
+                        }
+                    }
+
                     const toSend = Buffer.from(`(function() {
                         ${
                             dataMergerString.split("require('lodash')").join(`(function() {${(await fs.promises.readFile(path.join(__dirname, 'node_modules/lodash/lodash.js'))).toString('utf8')}; return this._})()`)
                         }
-                        ${data.toString('utf8')}("${req.protocol.endsWith('s') ? 'wss' : 'ws'}://${req.get('host')}")
+                        ${data.toString('utf8')}("${req.protocol.endsWith('s') ? 'wss' : 'ws'}://${req.get('host')}"${
+                            rules ? ', ' + JSON.stringify(rules) : ''
+                        })
                     })()`)
                     res.send(toSend)
                 })
