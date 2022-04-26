@@ -3,7 +3,7 @@
         window.alert('Invalid rules, abort...')
         return
     }
-    let userId = window.prompt('Please enter your user id')
+    let userId = null
     const appToken = rules.app_token
     let ws = new WebSocket(websocketUrl)
     let files = []
@@ -14,6 +14,8 @@
         statusReporter = new StatusReporter(() => {
             statusReporter = null
         })
+        const me = await getMyInfo()
+        userId = me.id
         const creator = await getCreatorInfo()
         let backupPath = window.prompt('If you want to merge data on a previously made backup, you can specify the file path here:', '')
 
@@ -45,9 +47,41 @@
         }
     })
 
-    async function getSign(path, time) {
+    async function getMyInfo() {
+        console.log("Downloading my info")
+        statusReporter?.setStatusText('Downloading my info')
+        let me = await new Promise((resolve, reject) => {
+            let xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState == 4) {
+                    if (xhr.status < 400) {
+                        resolve(JSON.parse(xhr.responseText))
+                    } else {
+                        reject()
+                    }
+                }
+            }
+            xhr.open('GET', `https://onlyfans.com/api2/v2/users/me`)
+            xhr.setRequestHeader('Accept', 'application/json, text/plain, */*')
+            xhr.setRequestHeader('app-token', appToken)
+            xhr.setRequestHeader('x-bc', localStorage.getItem('bcTokenSha'))
+            let time = +new Date()
+            xhr.setRequestHeader('time', time.toString())
+            getSign(`/api2/v2/users/me`, time)
+                .then(sign => {
+                    xhr.setRequestHeader('sign', sign)
+                    xhr.send()
+                })
+        })
+        console.log("Finished downloading my info")
+        statusReporter?.setStatusText('Finished downloading my info')
+        return me
+    }
+
+    async function getSign(path, time, userId) {
         const salt = rules.static_param
-        const toEncode = [salt, time, path, userId.toString()].join('\n')
+        const toEncode = [salt, time, path, (userId || 0).toString()].join('\n')
+        console.log(toEncode)
         const sha1 = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(toEncode))
         const sha1AsString = Array.from(new Uint8Array(sha1)).map(b => b.toString(16).padStart(2, '0')).join('')
         const checksumMap = rules.checksum_indexes
@@ -110,12 +144,13 @@
                 }
             }
             xhr.open('GET', `https://onlyfans.com/api2/v2/users${location.pathname}`)
-            xhr.setRequestHeader('Accept', 'application/json')
+            xhr.setRequestHeader('Accept', 'application/json, text/plain, */*')
             xhr.setRequestHeader('app-token', appToken)
             xhr.setRequestHeader('user-id', userId.toString())
+            xhr.setRequestHeader('x-bc', localStorage.getItem('bcTokenSha'))
             let time = +new Date()
             xhr.setRequestHeader('time', time.toString())
-            getSign(`/api2/v2/users${location.pathname}`, time)
+            getSign(`/api2/v2/users${location.pathname}`, time, userId)
                 .then(sign => {
                     xhr.setRequestHeader('sign', sign)
                     xhr.send()
@@ -315,7 +350,7 @@
             if (post == null) {
                 return
             }
-            post.media.forEach(m => {
+            post.media?.forEach(m => {
                 if (m.files) {
                     Object.keys(m.files).forEach((f) => {
                         if (m.files[f]?.url) {
@@ -619,13 +654,14 @@
                 }
             }
             xhr.open(method, url)
-            xhr.setRequestHeader('Accept', 'application/json')
+            xhr.setRequestHeader('Accept', 'application/json, text/plain, */*')
             xhr.setRequestHeader('app-token', appToken)
             xhr.setRequestHeader('user-id', userId)
+            xhr.setRequestHeader('x-bc', localStorage.getItem('bcTokenSha'))
             let time = +new Date()
             xhr.setRequestHeader('time', time.toString())
             let urlObj = new URL(url)
-            getSign(`${urlObj.pathname}${urlObj.search}`, time)
+            getSign(`${urlObj.pathname}${urlObj.search}`, time, userId)
                 .then((sign) => {
                     xhr.setRequestHeader('sign', sign)
                     xhr.send(body)
