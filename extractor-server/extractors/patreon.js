@@ -1,5 +1,22 @@
 ;(function(websocketUrl) {
-    ;(function(creator) {
+    const creatorVanity = /^\/c\/([^\/]+)\/?/g.exec(window.location.pathname)?.[1]
+    if (!creatorVanity) {
+        console.error("Patreon extractor: No creator found in URL")
+        return
+    }
+    ;(async function(creatorVanity) {
+        let creator = null
+        try {
+            creator = await fetchCreatorData(creatorVanity)
+            if (!creator) {
+                console.error("could not fetch creator data")
+                return
+            }
+        } catch (err) {
+            console.error("Error while fetching creator data:", err)
+            return
+        }
+
         let ws = new WebSocket(websocketUrl)
         let files = []
         ws.onopen = async () => {
@@ -16,11 +33,17 @@
             }
         })
 
+        async function fetchCreatorData(creatorVanity) {
+            const buildId = JSON.parse(document.querySelector('#__NEXT_DATA__').innerHTML).buildId
+            const res = await (await fetch(`https://www.patreon.com/_next/data/${buildId}/c/${creatorVanity}/posts.json?vanity=${creatorVanity}&tab=posts`)).json()
+            return res.pageProps.bootstrapEnvelope.pageBootstrap.creator
+        }
+
         async function extractFromCurrentPatreonPage(ws, zipId) {
             let nextUrl = `https://www.patreon.com/api/posts?include=user%2Cattachments%2Cuser_defined_tags%2Ccampaign%2Cpoll.choices%2Cpoll.current_user_responses.user%2Cpoll.current_user_responses.choice%2Cpoll.current_user_responses.poll%2Caccess_rules.tier.null%2Cimages.null%2Caudio.null&fields[post]=change_visibility_at%2Ccomment_count%2Ccontent%2Ccurrent_user_can_delete%2Ccurrent_user_can_view%2Ccurrent_user_has_liked%2Cembed%2Cimage%2Cis_paid%2Clike_count%2Cmin_cents_pledged_to_view%2Cpost_file%2Cpost_metadata%2Cpublished_at%2Cpatron_count%2Cpatreon_url%2Cpost_type%2Cpledge_url%2Cthumbnail_url%2Cteaser_text%2Ctitle%2Cupgrade_url%2Curl%2Cwas_posted_by_campaign_owner&fields[user]=image_url%2Cfull_name%2Curl&fields[campaign]=currency%2Cshow_audio_post_download_links%2Cavatar_photo_url%2Cearnings_visibility%2Cis_nsfw%2Cis_monthly%2Cname%2Curl&fields[access_rule]=access_rule_type%2Camount_cents&fields[media]=id%2Cimage_urls%2Cdownload_url%2Cmetadata%2Cfile_name&sort=-published_at&filter[campaign_id]=${creator.data.id}&filter[is_draft]=false&filter[contains_exclusive_posts]=true&json-api-use-default-includes=false&json-api-version=1.0`
             let data = []
             let included = []
-            
+
             console.log("Downloading posts info")
             while (nextUrl != null) {
                 let response = await new Promise((resolve, reject) => {
@@ -71,6 +94,11 @@
                 addFile(creator.data.attributes.cover_photo_url)
                 addFile(creator.data.attributes.image_small_url)
                 addFile(creator.data.attributes.image_url)
+                if (creator.data.attributes.cover_photo_url_sizes) {
+                    for (const size in creator.data.attributes.cover_photo_url_sizes) {
+                        addFile(creator.data.attributes.cover_photo_url_sizes[size])
+                    }
+                }
                 if (creator.data.attributes.summary) {
                     try {
                         const parser = new DOMParser()
@@ -153,13 +181,13 @@
                     }
                 }
             }
-            
+
             function addFile(f) {
-                if (f != null && files.indexOf(f) === -1) {
+                if (f && files.indexOf(f) === -1) {
                     files.push(f)
                 }
             }
-            
+
             console.log("Downloading posts files")
             await downloadFiles(ws, zipId, files)
         }
@@ -371,5 +399,5 @@
                 requestId: data.requestId
             }))
         }
-    })(window.patreon.bootstrap.creator)
+    })(creatorVanity)
 })

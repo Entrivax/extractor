@@ -7,13 +7,14 @@ const path = require('path')
 const moment = require('moment')
 const Readable = require('stream').Readable
 const backupInterface = require('./lib/backup-file-interface')
+const { hideBin } = require('yargs/helpers');
 
 const app = express()
 const server = http.createServer(app)
 
 const wss = new WebSocket.Server({ server })
 
-const args = require('yargs')
+const args = require('yargs')(hideBin(process.argv))
     .option('port', {
         default: 8080,
         description: 'the port the server will be running on',
@@ -315,7 +316,7 @@ wss.on('connection', (ws) => {
                         fileSize: bufferData.length
                     }))
                 } catch (exception) {
-                    console.error(exception)
+                    console.error('failed to download file at url', parsedMessage.url, exception)
                     ws.send(JSON.stringify({
                         type: parsedMessage.type + '_response',
                         requestId: parsedMessage.requestId,
