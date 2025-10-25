@@ -14,10 +14,10 @@
 	},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	"forwardPorts": [5173],
+	"forwardPorts": [5173, 5174],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "docker compose -f /workspaces/extractor/.devcontainer/docker-compose.yml up -d",
+	"postCreateCommand": "cd /workspaces/extractor/.devcontainer && docker compose up -d",
 	"customizations": {
 		"vscode": {
 			"extensions": [
