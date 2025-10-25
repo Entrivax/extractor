@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
 import { useLinks } from "../../utils/strings";
-import { useQuery } from "../../utils/query";
+import { useSearchParams } from "react-router-dom";
 
 export type EmbedData = {
     url: string;
@@ -13,7 +13,7 @@ export type EmbedData = {
 }
 
 export function Embed({ data }: { data: EmbedData }) {
-    const searchParams = useQuery()
+    const [searchParams] = useSearchParams()
     const { cleanLink } = useLinks((searchParams.get('base') || null) as string | null)
     const [showEmbed, setShowEmbed] = useState(false)
     if (!isLink(data.html)) {

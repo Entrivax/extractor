@@ -1,6 +1,6 @@
 import { Post, PostData } from "./Post"
 import { Pagination } from "./Pagination"
-import { useQuery } from "../../utils/query"
+import { useSearchParams } from "react-router-dom"
 
 export type PostsData = {
 	posts: PostData[]
@@ -10,7 +10,7 @@ const postsPerPage = 25
 const pageParam = 'page'
 
 export function Posts({ posts }: PostsData) {
-	const searchParams = useQuery()
+	const [searchParams] = useSearchParams()
 	
 	const page = +(searchParams.get(pageParam) || '1');
 	if (posts == null) {

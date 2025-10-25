@@ -1,9 +1,8 @@
 import { render } from 'preact';
 
 import { Home } from './pages/Home/index.jsx';
-import { NotFound } from './pages/_404.jsx';
 import './style.css';
-import { HashRouter, Switch, Route } from 'react-router-dom';
+import { HashRouter, Route, Routes } from 'react-router-dom';
 import { setupThemeSwitcher, Theme } from '../utils/theme-switcher.js'
 import { ThemeSwitch } from './components/ThemeSwitch.js'
 
@@ -15,10 +14,9 @@ export function App() {
 					<ThemeSwitch />
 				</div>
 				<HashRouter>
-					<Switch>
-						<Route path="/" component={Home} />
-						<Route component={NotFound} />
-					</Switch>
+					<Routes>
+						<Route index element={<Home />} />
+					</Routes>
 				</HashRouter>
 				{/* <Router hook={useHashLocation} hrefs={(h) => h}>
 				</Router> */}

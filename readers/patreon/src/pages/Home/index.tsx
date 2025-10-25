@@ -5,10 +5,10 @@ import { Cover } from '../../components/Cover.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Posts } from '../../components/Posts.js';
 import { PostData } from '../../components/Post.js';
-import { useQuery } from '../../../utils/query.js';
+import { useSearchParams } from 'react-router-dom';
 
 export function Home() {
-	const searchParams = useQuery()
+	const [searchParams] = useSearchParams()
 	const { cleanLink, getMediaLink, parseHtmlAndCleanLinks } = useLinks((searchParams.get('base') || null) as string | null)
 	const [data, setData] = useState({
 		patreonData: (window as any).patreonData,
