@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Funnel+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+@import "tailwindcss";
+
+:root {
+	color-scheme: light dark;
+	--theme-light: initial;
+	--theme-dark: ;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--theme-dark: initial;
+		--theme-light: ;
+	}
+}
+:root.light {
+	color-scheme: light;
+	--theme-light: initial;
+	--theme-dark: ;
+}
+:root.dark {
+	color-scheme: dark;
+	--theme-dark: initial;
+	--theme-light: ;
+}
+
+:root {
+	--regular-text-color: var(--theme-light, oklch(0 0 0 / 1)) var(--theme-dark, oklch(1 0 0 / 1));
+	--regular-muted-text-color: oklch(from var(--regular-text-color) l c h / 0.6);
+
+	--background-color: var(--theme-light, oklch(from var(--primary-theme-color) 0.95 calc(c * 0.06) calc(h + -8))) var(--theme-dark, oklch(from var(--primary-theme-color) 0.17 calc(c * 0.01) calc(h + -8)));
+
+	--container-background-color: var(--theme-light, oklch(from var(--primary-theme-color) 0.985 calc(c * 0.02) calc(h + -8))) var(--theme-dark, oklch(from var(--primary-theme-color) 0.24 calc(c * 0.06) calc(h + -8)));
+
+	--primary-subtle-color: oklch(from var(--primary-theme-color) 0.7 calc(c * 0.1) calc(h + -8) / 0.1333);
+
+	--border-muted-color: var(--theme-light, oklch(0 0 0 / 0.1)) var(--theme-dark, oklch(1 0 0 / 0.19));
+
+	--button-action-color: var(--primary-theme-color);
+	--button-action-hover-color: oklch(from var(--button-action-color) calc(l * 0.9) calc(c * 0.9) calc(h + -17));
+	--button-action-pressed-color: oklch(from var(--button-action-color) calc(l * 0.8) calc(c * 0.8) calc(h + -17));
+	--button-onaction-color: #fff;
+	--button-onaction-hover-color: oklch(from var(--primary-theme-color) 0.95 0.05 h);
+	--button-onaction-pressed-color: oklch(from var(--primary-theme-color) 0.9 0.05 h);
+
+	--action-color: oklch(from var(--primary-theme-color) calc(l * 1.38) calc(c * 0.5) calc(h + -6));
+	--action-hover-color: oklch(from var(--primary-theme-color) calc(l * 1.28) calc(c * 0.63) calc(h + -5));
+	--action-pressed-color: oklch(from var(--primary-theme-color) calc(l * 1.18) calc(c * 0.82) calc(h + -3));
+
+	--background-subtle-color: var(--theme-light, oklch(from var(--primary-theme-color) 1 calc(c * 0.1) calc(h + -8) / 0.4)) var(--theme-dark, oklch(from var(--primary-theme-color) 0.01 calc(c * 0.06) calc(h + -8) / 0.25));
+}
+
+:root {
+	--primary-theme-color: oklch(53.964% 0.11808 247.276);
+	background-color: var(--background-color);
+	color: var(--regular-text-color);
+	font-family: "Funnel Sans", sans-serif;
+	transition: color 0.2s, background-color 0.3s, border-color 0.3s;
+}

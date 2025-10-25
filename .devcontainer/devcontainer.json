@@ -2,17 +2,29 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
 {
 	"name": "Node.js & TypeScript",
+	// "dockerComposeFile": "docker-compose.yml",
+	// "service": "development",
+	// "workspaceFolder": "/workspaces/extractor",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bullseye"
+	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bullseye",
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
+	"features": {
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
+	},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+	"forwardPorts": [5173],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "yarn install",
+	"postCreateCommand": "docker compose -f /workspaces/extractor/.devcontainer/docker-compose.yml up -d",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"bradlc.vscode-tailwindcss"
+			]
+		}
+	}
 
 	// Configure tool-specific properties.
 	// "customizations": {},

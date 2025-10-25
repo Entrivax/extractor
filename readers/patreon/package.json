@@ -1,0 +1,29 @@
+{
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite --host",
+		"build": "vite build",
+		"preview": "vite preview"
+	},
+	"dependencies": {
+		"@preact/signals": "^2.3.2",
+		"@tailwindcss/vite": "^4.1.11",
+		"preact": "^10.25.3",
+		"preact-iso": "^2.9.2",
+		"react-router-dom": "^5.3.4",
+		"tailwindcss": "^4.1.11"
+	},
+	"devDependencies": {
+		"@preact/preset-vite": "^2.9.3",
+		"@types/react-router-dom": "^5.3.3",
+		"eslint": "^8.57.1",
+		"eslint-config-preact": "^1.5.0",
+		"typescript": "^5.8.3",
+		"vite": "^6.0.4",
+		"vite-plugin-singlefile": "^2.2.0"
+	},
+	"eslintConfig": {
+		"extends": "preact"
+	}
+}
