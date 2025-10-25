@@ -8,6 +8,8 @@ const moment = require('moment')
 const Readable = require('stream').Readable
 const backupInterface = require('./lib/backup-file-interface')
 const { hideBin } = require('yargs/helpers');
+const { spawn } = require('child_process');
+const os = require('os')
 
 const app = express()
 const server = http.createServer(app)
@@ -28,6 +30,11 @@ const args = require('yargs')(hideBin(process.argv))
         alias: 'o',
         default: './',
         description: 'the directory to use to save output files',
+        type: 'string'
+    })
+    .option('ytdlp', {
+        default: 'yt-dlp',
+        description: 'the path to the yt-dlp executable',
         type: 'string'
     })
     .argv
@@ -219,10 +226,10 @@ wss.on('connection', (ws) => {
                     break
                 }
                 if (parsedMessage.isBase64) {
-                    zipHandles[parsedMessage.id].addFile(parsedMessage.file, bufferToStream(Buffer.from(parsedMessage.content, 'base64')))
+                    await zipHandles[parsedMessage.id].addFile(parsedMessage.file, bufferToStream(Buffer.from(parsedMessage.content, 'base64')))
                 }
                 else {
-                    zipHandles[parsedMessage.id].addFile(parsedMessage.file, bufferToStream(Buffer.from(parsedMessage.content)))
+                    await zipHandles[parsedMessage.id].addFile(parsedMessage.file, bufferToStream(Buffer.from(parsedMessage.content)))
                 }
                 ws.send(JSON.stringify({
                     type: parsedMessage.type + '_response',
@@ -297,9 +304,18 @@ wss.on('connection', (ws) => {
                     break
                 }
                 try {
-                    const response = await axios.get(parsedMessage.url, {
+                    const options = {
+                        headers: {},
                         responseType: 'arraybuffer',
-                    })
+                    }
+                    if (parsedMessage.userAgent) {
+                        options.headers['User-Agent'] = parsedMessage.userAgent
+                    }
+                    if (parsedMessage.referer) {
+                        options.headers['Referer'] = parsedMessage.referer
+                    }
+
+                    const response = await axios.get(parsedMessage.url, options)
                     if (response.status >= 400) {
                         ws.send(JSON.stringify({
                             type: parsedMessage.type + '_response',
@@ -309,7 +325,7 @@ wss.on('connection', (ws) => {
                         break
                     }
                     const bufferData = Buffer.from(response.data)
-                    zipHandles[parsedMessage.id].addFile(parsedMessage.file, bufferToStream(bufferData))
+                    await zipHandles[parsedMessage.id].addFile(parsedMessage.file, bufferToStream(bufferData))
                     ws.send(JSON.stringify({
                         type: parsedMessage.type + '_response',
                         requestId: parsedMessage.requestId,
@@ -323,6 +339,59 @@ wss.on('connection', (ws) => {
                         error: 'failed_to_download'
                     }))
                 }
+                break
+            case 'download-with-yt-dl':
+                if (zipHandles[parsedMessage.id] == null) {
+                    ws.send(JSON.stringify({
+                        type: parsedMessage.type + '_response',
+                        requestId: parsedMessage.requestId,
+                        error: 'zip_not_exists'
+                    }))
+                    break
+                }
+
+                let tmpWorkDir = null
+                try {
+                    tmpWorkDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'yt-dlp-'))
+                    const videoPath = path.join(tmpWorkDir, `output.mp4`)
+                    const ytDlp = spawn('yt-dlp', [
+                        '--user-agent', parsedMessage.userAgent,
+                        '--referer', parsedMessage.referer,
+                        '-o', videoPath,
+                        parsedMessage.url
+                    ], {
+                        stdio: 'inherit',
+                    });
+
+                    await new Promise((resolve, reject) => {
+                        ytDlp.on('close', (code) => {
+                            if (code !== 0) {
+                                reject(new Error(`yt-dlp exited with code ${code}`));
+                            } else {
+                                resolve();
+                            }
+                        })
+                    })
+                    const stream = fs.createReadStream(videoPath)
+
+                    await zipHandles[parsedMessage.id].addFile(`media/${parsedMessage.mediaId}.mp4`, stream);
+                } catch (err) {
+                    console.error(err);
+                }
+
+                if (tmpWorkDir != null) {
+                    try {
+                        await fs.promises.rm(tmpWorkDir, { force: true, recursive: true })
+                    } catch (err) {
+                        console.error(`Failed to remove temporary directory ${tmpWorkDir}`, err)
+                    }
+                }
+
+                ws.send(JSON.stringify({
+                    type: parsedMessage.type + '_response',
+                    requestId: parsedMessage.requestId,
+                }));
+
                 break
             case 'end':
                 if (zipHandles[parsedMessage.id] == null) {

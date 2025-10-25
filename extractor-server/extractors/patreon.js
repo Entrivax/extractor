@@ -1,13 +1,13 @@
 ;(function(websocketUrl) {
-    const creatorVanity = /^\/c\/([^\/]+)\/?/g.exec(window.location.pathname)?.[1]
-    if (!creatorVanity) {
-        console.error("Patreon extractor: No creator found in URL")
+    const campaignId = /\/campaign\/(\d+)/.exec(document.querySelector('main img[src*="/p/campaign"]').src)[1]
+    if (!campaignId) {
+        console.error("Patreon extractor: No campaign id found")
         return
     }
-    ;(async function(creatorVanity) {
+    ;(async function(campaignId) {
         let creator = null
         try {
-            creator = await fetchCreatorData(creatorVanity)
+            creator = await fetchCreatorData(campaignId)
             if (!creator) {
                 console.error("could not fetch creator data")
                 return
@@ -19,6 +19,7 @@
 
         let ws = new WebSocket(websocketUrl)
         let files = []
+        const mediaFiles = {}
         ws.onopen = async () => {
             const zipId = (await openZip(ws, 'patreon')).zipId
 
@@ -33,14 +34,13 @@
             }
         })
 
-        async function fetchCreatorData(creatorVanity) {
-            const buildId = JSON.parse(document.querySelector('#__NEXT_DATA__').innerHTML).buildId
-            const res = await (await fetch(`https://www.patreon.com/_next/data/${buildId}/c/${creatorVanity}/posts.json?vanity=${creatorVanity}&tab=posts`)).json()
-            return res.pageProps.bootstrapEnvelope.pageBootstrap.creator
+        async function fetchCreatorData(campaignId) {
+            const res = await (await fetch(`https://www.patreon.com/api/campaigns/${campaignId}?fields%5Bcampaign%5D=avatar_photo_url,avatar_photo_image_urls,can_migrate_ab,cover_photo_url,cover_photo_url_sizes,current_user_has_entitlement,discord_server_id,summary,creation_name,is_plural,pay_per_name,one_liner,main_video_embed,main_video_url,image_small_url,image_url,thanks_video_url,thanks_embed,thanks_msg,is_monthly,is_nsfw,created_at,primary_theme_color,published_at,pledge_url,pledge_sum,pledge_sum_currency,campaign_pledge_sum,patron_count,post_count,has_public_rss,has_rss,has_spotify_rss,spotify_uri,has_visible_shop,rss_external_auth_link,earnings_visibility,patron_count_visibility,show_earnings,show_patron_count,is_paused,pause_ended_at,launch_review_status,name,url,use_tier_welcome_message,vanity,currency,has_community,tier_highlighting_options,show_getting_started_collection&fields%5Bcampaign-recommendation%5D=recommendation_reason&fields%5Breward%5D=id,title,user_limit,declined_patron_count,description,patron_count,patron_amount_cents,patron_currency,remaining,amount_cents,published,currency,url,discord_role_ids,image_url,welcome_message,welcome_video_embed&fields%5Buser%5D=about,created,discord_id,spotify_id,email,facebook,facebook_id,first_name,full_name,gender,google_id,has_password,hide_pledges,image_url,is_deleted,is_nuked,is_suspended,can_see_nsfw,is_email_verified,last_name,thumb_url,twitch,twitter,url,vanity,youtube,social_connections,current_user_block_status&fields%5Boffer%5D=title,description,ends_at,starts_at,status,days_to_run&fields%5BrewardItem%5D=title,description,offer_id,item_type,is_deleted,is_ended,is_published&fields%5BaccessRule%5D=access_rule_type,amount_cents,post_count&include=post_aggregation,creator.campaign,creator.pledge_to_current_user.null,connected_socials,current_user_pledge.reward.null,current_user_pledge.campaign.null,rewards.items.null,rewards.cadence_options.null,rss_auth_token,access_rules.tier.null,active_offer.rewards.null,scheduled_offer.rewards.null,creator.pledges.campaign.null,reward_items.template,rewards.null,rewards.reward_recommendations,thanks_embed,thanks_msg&json-api-version=1.0&json-api-use-default-includes=false`)).json()
+            return res
         }
 
         async function extractFromCurrentPatreonPage(ws, zipId) {
-            let nextUrl = `https://www.patreon.com/api/posts?include=user%2Cattachments%2Cuser_defined_tags%2Ccampaign%2Cpoll.choices%2Cpoll.current_user_responses.user%2Cpoll.current_user_responses.choice%2Cpoll.current_user_responses.poll%2Caccess_rules.tier.null%2Cimages.null%2Caudio.null&fields[post]=change_visibility_at%2Ccomment_count%2Ccontent%2Ccurrent_user_can_delete%2Ccurrent_user_can_view%2Ccurrent_user_has_liked%2Cembed%2Cimage%2Cis_paid%2Clike_count%2Cmin_cents_pledged_to_view%2Cpost_file%2Cpost_metadata%2Cpublished_at%2Cpatron_count%2Cpatreon_url%2Cpost_type%2Cpledge_url%2Cthumbnail_url%2Cteaser_text%2Ctitle%2Cupgrade_url%2Curl%2Cwas_posted_by_campaign_owner&fields[user]=image_url%2Cfull_name%2Curl&fields[campaign]=currency%2Cshow_audio_post_download_links%2Cavatar_photo_url%2Cearnings_visibility%2Cis_nsfw%2Cis_monthly%2Cname%2Curl&fields[access_rule]=access_rule_type%2Camount_cents&fields[media]=id%2Cimage_urls%2Cdownload_url%2Cmetadata%2Cfile_name&sort=-published_at&filter[campaign_id]=${creator.data.id}&filter[is_draft]=false&filter[contains_exclusive_posts]=true&json-api-use-default-includes=false&json-api-version=1.0`
+            let nextUrl = `https://www.patreon.com/api/posts?include=campaign%2Caccess_rules%2Caccess_rules.tier.null%2Cattachments_media%2Caudio%2Caudio_preview.null%2Ccustom_thumbnail_media.null%2Cdrop%2Cimages%2Cmedia%2Cnative_video_insights%2Cpoll.choices%2Cpoll.current_user_responses.user%2Cpoll.current_user_responses.choice%2Cpoll.current_user_responses.poll%2Cshows.null%2Cuser%2Cuser_defined_tags%2Cvideo.null%2Ccontent_unlock_options.product_variant.null%2Ccontent_unlock_options.reward.null%2Ccontent_unlock_options.product_variant.collection.null%2Clivestream%2Clivestream.state%2Clivestream.display%2Crss_synced_feed%2Cpost_new_comment_identity%2Cpost_new_comment_identity.avatar%2Cpost_new_comment_identity.identity_badges&fields[campaign]=currency%2Cshow_audio_post_download_links%2Cavatar_photo_url%2Cavatar_photo_image_urls%2Cearnings_visibility%2Cis_nsfw%2Cis_monthly%2Cname%2Curl%2Cpatron_count%2Cprimary_theme_color&fields[post]=change_visibility_at%2Ccomment_count%2Ccommenter_count%2Ccontent%2Ccreated_at%2Ccurrent_user_can_comment%2Ccurrent_user_can_delete%2Ccurrent_user_can_report%2Ccurrent_user_can_view%2Ccurrent_user_comment_disallowed_reason%2Ccurrent_user_has_liked%2Cembed%2Cimage%2Cinsights_last_updated_at%2Cis_paid%2Cis_preview_blurred%2Chas_custom_thumbnail%2Clike_count%2Cmeta_image_url%2Cmin_cents_pledged_to_view%2Cmonetization_ineligibility_reason%2Cpost_file%2Cpost_metadata%2Cpublished_at%2Cpatreon_url%2Cpost_type%2Cpledge_url%2Cpreview_asset_type%2Cthumbnail%2Cthumbnail_url%2Cteaser_text%2Ccontent_teaser_text%2Ccleaned_teaser_text%2Ctitle%2Cupgrade_url%2Curl%2Cwas_posted_by_campaign_owner%2Chas_ti_violation%2Cmoderation_status%2Cpost_level_suspension_removal_date%2Cpls_one_liners_by_category%2Cvideo%2Cvideo_preview%2Cview_count%2Ccontent_unlock_options%2Cis_new_to_current_user%2Cwatch_state&fields[post_tag]=tag_type%2Cvalue&fields[user]=image_url%2Cfull_name%2Curl&fields[access_rule]=access_rule_type%2Camount_cents&fields[livestream]=display%2Cstate&fields[media]=id%2Cimage_urls%2Cdisplay%2Cdownload_url%2Cmetadata%2Cfile_name%2Cstate&fields[native_video_insights]=average_view_duration%2Caverage_view_pct%2Chas_preview%2Cid%2Clast_updated_at%2Cnum_views%2Cpreview_views%2Cvideo_duration&fields[content-unlock-option]=content_unlock_type%2Cis_current_user_eligible%2Creward_benefit_categories&fields[product-variant]=price_cents%2Ccurrency_code%2Ccheckout_url%2Cis_hidden%2Cpublished_at_datetime%2Ccontent_type%2Corders_count%2Caccess_metadata&fields[shows]=id%2Ctitle%2Cdescription%2Cthumbnail&fields[display-identity]=name%2Clink_url&fields[primary-image]=image_icon&fields[identity-badge]=badge_type&filter[campaign_id]=${creator.data.id}&filter[contains_exclusive_posts]=true&filter[is_draft]=false&filter[include_lives]=true&filter[include_drops]=true&sort=-published_at&json-api-use-default-includes=false&json-api-version=1.0`
             let data = []
             let included = []
 
@@ -84,6 +84,7 @@
 
             await appendFile(ws, zipId, 'data.json', jsonResult)
             await appendFile(ws, zipId, 'data.json.js', `window.patreonData = ${jsonResult}`)
+
             console.log("Finished downloading posts info")
 
             console.log("Filter links of files to download")
@@ -127,10 +128,32 @@
 
             for (let dataObj of data) {
                 if (dataObj.attributes) {
+                    if (dataObj.attributes.meta_image_url) {
+                        addFile(dataObj.attributes.meta_image_url)
+                    }
                     if (dataObj.attributes.image) {
-                        addFile(dataObj.attributes.image.large_url)
-                        addFile(dataObj.attributes.image.thumb_url)
-                        addFile(dataObj.attributes.image.url)
+                        for (let prop in dataObj.attributes.image) {
+                            if (typeof prop === 'string' && prop.endsWith('url')) {
+                                addFile(dataObj.attributes.image[prop])
+                            }
+                        }
+                    }
+                    if (dataObj.attributes.thumbnail) {
+                        for (let image in dataObj.attributes.thumbnail) {
+                            addFile(dataObj.attributes.thumbnail[image])
+                        }
+                    }
+                    if (dataObj.attributes.embed) {
+                        if (isLink(dataObj.attributes.embed.html)) {
+                            addFile(dataObj.attributes.embed.html)
+                        }
+                    }
+                    if (dataObj.attributes.post_file?.url) {
+                        const url = dataObj.attributes.post_file.url
+                        if (url.match(/:\/\/stream\.mux\.com/g))
+                            addMediaFile(url, dataObj.attributes.post_file.media_id)
+                        else
+                            addFile(url)
                     }
                     if (dataObj.attributes.content) {
                         try {
@@ -140,7 +163,7 @@
                             for (let i = 0; i < imgs.length; i++) {
                                 const el = imgs[i]
                                 if (!el.hasAttribute('src')) {
-                                    return
+                                    continue
                                 }
                                 const link = el.getAttribute('src')
                                 addFile(link)
@@ -163,9 +186,28 @@
                                 addFile(includedObj.attributes.image_urls[image])
                             }
                         }
+                        if (includedObj.attributes.display) {
+                            if (includedObj.attributes.display.default_thumbnail?.url) {
+                                addFile(includedObj.attributes.display.default_thumbnail?.url)
+                            }
+                            if (includedObj.attributes.display.url) {
+                                if (typeof includedObj.attributes.display.duration === 'number') {
+                                    addMediaFile(includedObj.attributes.display.url, includedObj.attributes.display.media_id)
+                                }
+                            }
+                        }
                     } else if (includedObj.type === 'user') {
                         if (includedObj.attributes.image_url) {
                             addFile(includedObj.attributes.image_url)
+                        }
+                    } else if (includedObj.type === 'campaign') {
+                        if (includedObj.attributes.avatar_photo_url) {
+                            addFile(includedObj.attributes.avatar_photo_url)
+                        }
+                        if (includedObj.attributes.avatar_photo_image_urls) {
+                            for (let image in includedObj.attributes.avatar_photo_image_urls) {
+                                addFile(includedObj.attributes.avatar_photo_image_urls[image])
+                            }
                         }
                     } else if (includedObj.type === 'attachment') {
                         if (includedObj.attributes.url) {
@@ -188,8 +230,59 @@
                 }
             }
 
+            function addMediaFile(url, mediaId) {
+                if (url && !mediaFiles[mediaId]) {
+                    mediaFiles[mediaId] = url
+                }
+            }
+
             console.log("Downloading posts files")
+            await downloadMediaFiles(ws, zipId, mediaFiles)
             await downloadFiles(ws, zipId, files)
+        }
+
+        /**
+         * 
+         * @param {*} ws 
+         * @param {*} zipId 
+         * @param {Record<number, string>} mediaFiles 
+         */
+        async function downloadMediaFiles(ws, zipId, mediaFiles) {
+            const parallelDownloadsCount = 2
+            const urlsStack = Object.entries(mediaFiles)
+            const runningPromises = []
+
+            for (let i = 0; i < parallelDownloadsCount && urlsStack.length > 0; i++) {
+                const [mediaId, url] = urlsStack.splice(0, 1)[0]
+                runningPromises.push(selfRemovePromise(downloadWithYtDl(ws, zipId, mediaId, url)))
+            }
+
+            while (urlsStack.length > 0) {
+                await Promise.race(runningPromises)
+                let downloadedFiles = Object.keys(mediaFiles).length - urlsStack.length
+                if (downloadedFiles % 10 === 0) {
+                    console.log(`Downloaded ${downloadedFiles}/${Object.keys(mediaFiles).length} medias (${Math.round(((100 * downloadedFiles / Object.keys(mediaFiles).length) + Number.EPSILON) * 100) / 100}%)`)
+                }
+
+                const [mediaId, url] = urlsStack.splice(0, 1)[0]
+                runningPromises.push(selfRemovePromise(downloadWithYtDl(ws, zipId, mediaId, url)))
+            }
+
+            await Promise.all(runningPromises)
+            console.log(`Downloading finished ${Object.keys(mediaFiles).length}/${Object.keys(mediaFiles).length} medias (100%)`)
+
+            function selfRemovePromise(promise) {
+                const self = new Promise(resolve => {
+                    promise.catch(() => {}).then(() => {
+                        let indexOf = runningPromises.indexOf(self)
+                        if (indexOf !== -1) {
+                            runningPromises.splice(indexOf, 1)
+                        }
+                        resolve()
+                    })
+                })
+                return self
+            }
         }
 
         async function downloadFiles(ws, zipId, urls) {
@@ -253,26 +346,52 @@
         }
 
         async function downloadFile(ws, zipId, url) {
-            let zipUrl = decodeURIComponent(url.replace(/^https?:\/\//, '').replace(/\?(.*)/, ''))
+            let zipUrl = decodeURIComponent(url.replace(/^https?:\/\//, '')
+                .replaceAll('%3F', '')
+                .replaceAll('%3A', '')
+                .replaceAll('%23', '')
+                .replaceAll('%7C', '')
+                .replaceAll('%22', '')
+                .replaceAll('%3C', '')
+                .replaceAll('%3E', '')
+                .replaceAll('%5C', '/')
+                .replace(/\?(.*)/, '')
+            )
             if (files.indexOf(zipUrl) === -1) {
                 if (!/https?\:\/\/.*\.patreonusercontent\.com\//g.test(url) && !/https?\:\/\/.*\.patreon\.com\//g.test(url)) {
                     await appendFileFromUrl(ws, zipId, zipUrl, url)
                 } else {
-                    let response = await new Promise((resolve, reject) => {
-                        let xhr = new XMLHttpRequest()
-                        xhr.responseType = "arraybuffer"
-                        xhr.onreadystatechange = () => {
-                            if (xhr.readyState == 4) {
-                                if (xhr.status < 400) {
-                                    resolve(xhr.response)
-                                } else {
-                                    reject()
+                    let response = null
+                    let retries = 0
+                    while (retries < 5) {
+                        try {
+                            response = await new Promise((resolve, reject) => {
+                                let xhr = new XMLHttpRequest()
+                                xhr.responseType = "arraybuffer"
+                                xhr.onreadystatechange = () => {
+                                    if (xhr.readyState == 4) {
+                                        if (xhr.status < 400) {
+                                            resolve(xhr.response)
+                                        } else {
+                                            reject(xhr)
+                                        }
+                                    }
                                 }
+                                xhr.open('GET', url)
+                                xhr.send()
+                            })
+                            break
+                        } catch (err) {
+                            if (err instanceof XMLHttpRequest && err.status >= 500) {
+                                retries++
+                                console.warn(`Error while downloading file ${url}, retrying (${retries}/5)`)
+                                await new Promise(resolve => setTimeout(resolve, 1000 + 500 * retries))
+                            } else {
+                                console.error(`Error while downloading file ${url}:`, err)
+                                return err
                             }
                         }
-                        xhr.open('GET', url)
-                        xhr.send()
-                    })
+                    }
                     files.push(zipUrl)
 
                     var responseLength = new Uint8Array(response).byteLength;
@@ -300,6 +419,15 @@
                     binary += String.fromCharCode(bytes[i]);
                 }
                 return window.btoa(binary);
+            }
+        }
+
+        function isLink(str) {
+            try {
+                new URL(str)
+                return true
+            } catch (e) {
+                return false
             }
         }
 
@@ -339,7 +467,22 @@
                     type: 'append-file-from-url',
                     id: zipId,
                     file: filePath,
-                    url: url
+                    url: url,
+                    userAgent: window.navigator.userAgent,
+                    referer: 'https://www.patreon.com/',
+                }, (data) => resolve(data))
+            })
+        }
+
+        function downloadWithYtDl(ws, zipId, mediaId, url) {
+            return new Promise((resolve) => {
+                sendMessage(ws, {
+                    type: 'download-with-yt-dl',
+                    id: zipId,
+                    mediaId: mediaId,
+                    url: url,
+                    userAgent: window.navigator.userAgent,
+                    referer: 'https://www.patreon.com/',
                 }, (data) => resolve(data))
             })
         }
