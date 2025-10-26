@@ -542,5 +542,5 @@
                 requestId: data.requestId
             }))
         }
-    })(creatorVanity)
+    })(campaignId)
 })
