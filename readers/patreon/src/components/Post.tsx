@@ -41,6 +41,15 @@ export type PostData = {
 		image?: ImageData
 		images?: ImageData[];
 		videoExternal?: VideoExternalData
+		attachments?: AttachmentData[]
+	}
+}
+
+export type AttachmentData = {
+	id: string;
+	attributes: {
+		file_name: string;
+		download_url: string;
 	}
 }
 
@@ -99,7 +108,6 @@ export function Post({ post }: { post: PostData }) {
 							<ImageItem images={post.attributes.images.map(img => ({ ...img.attributes.image_urls, download_url: img.attributes.download_url }))} />
 						)
 					case 'video_external_file':
-						console.log('cum', post)
 						return (
 							<VideoItem videoUrl={post.attributes.videoExternal?.attributes.display.url} />
 						)
@@ -114,6 +122,15 @@ export function Post({ post }: { post: PostData }) {
 				{ post.attributes.post_type === 'poll' && <Poll poll={{
 					...post.attributes.poll.attributes,
 				}} />}
+
+				{ post.attributes.attachments?.length > 0 && <div class="flex flex-col mt-4 gap-1">
+					{ post.attributes.attachments.map(attachment => (
+						<a href={attachment.attributes.download_url} class="flex gap-2 items-center w-fit text-(--action-color) hover:text-(--action-hover-color) focus-visible:text-(--action-hover-color) active:text-(--action-pressed-color)" key={`${post.id}-${attachment.id}`} download>
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-icon lucide-file w-4 h-4"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+							<span class="underline">{attachment.attributes.file_name}</span>
+						</a>
+					))}
+				</div> }
 
 				<div class="flex mt-5 text-(--regular-muted-text-color) text-sm gap-4">
 					<div class="flex items-center gap-2"> 

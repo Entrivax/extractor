@@ -131,6 +131,7 @@ export function Home() {
 					embed: p.attributes.embed,
 					poll: p.attributes.post_type === 'poll' ? metadatasMap[p.relationships.poll.data.id] : undefined,
 					videoExternal: p.attributes.post_type === 'video_external_file' ? metadatasMap[p.relationships.video.data.id] : undefined,
+					attachments: p.relationships.attachments_media?.data?.map(d => metadatasMap[d.id]) ?? undefined,
 				}
 			} satisfies PostData
 		})
