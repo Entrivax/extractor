@@ -10,7 +10,10 @@
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
-		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
+		"ghcr.io/devcontainers/features/go:1": {
+			"version": "latest"
+		}
 	},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
@@ -21,7 +24,9 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"bradlc.vscode-tailwindcss"
+				"bradlc.vscode-tailwindcss",
+				"EditorConfig.EditorConfig",
+				"eamodio.gitlens"
 			]
 		}
 	}
