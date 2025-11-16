@@ -25,11 +25,19 @@ function makeRequest<T extends GmResponseType>(options: { method: string, url: s
 export class Api {
 	constructor(private apiUrl: string) {}
 
-	async createBackup(previousBackupLocation: string) {
+	async createBackup(info: {
+		extractor: string,
+		creatorId: string,
+		creatorVanity: string,
+		previousBackupLocation: string
+	}) {
 		const form = new FormData()
-		if (previousBackupLocation) {
-			form.append('previous_backup_location', previousBackupLocation)
+		if (info.previousBackupLocation) {
+			form.append('previous_backup_location', info.previousBackupLocation)
 		}
+		form.append('extractor', info.extractor)
+		form.append('creator_id', info.creatorId)
+		form.append('creator_vanity', info.creatorVanity)
 		const req = await makeRequest({
 			method: 'POST',
 			url: `${this.apiUrl}/create-backup`,

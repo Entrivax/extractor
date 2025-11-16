@@ -22,7 +22,7 @@ export function App() {
 }
 
 render((
-	<ApiProvider apiUrl={GM_getValue("apiUrl", "http://localhost:7766")}>
+	<ApiProvider apiUrl={GM_getValue("apiUrl", "https://localhost:7766")}>
 		<BackupProcessProvider>
 			<App />
 		</BackupProcessProvider>

@@ -9,6 +9,8 @@ export type BackupProgressEvent = {
 	filesCompleted: number
 }
 
+const extractorId = 'patreon'
+
 export async function startPatreonBackupProcess(api: Api, location: URL, onProgress: (progressEvent: BackupProgressEvent) => void, previousBackupLocation: string): Promise<void> {
 	const referrer = location.href
 	const campaignId = /\/campaign\/(\d+)/.exec(document.querySelector<HTMLImageElement>('main img[src*="/p/campaign"]').src)[1]
@@ -50,7 +52,12 @@ export async function startPatreonBackupProcess(api: Api, location: URL, onProgr
 		onProgress({ currentStep: `Fetching posts (page ${page})`, filesInProgress: [], totalFiles: 0, filesCompleted: 0 })
 	})
 
-	const backupApi = await api.createBackup(previousBackupLocation)
+	const backupApi = await api.createBackup({
+		previousBackupLocation,
+		extractor: extractorId,
+		creatorId: creator.data.id,
+		creatorVanity: creator.data.attributes.vanity
+	})
 
 	let jsonResult = JSON.stringify({
 		creator,
@@ -340,5 +347,5 @@ async function downloadFiles(backupApi: BackupApi, files: Set<string>, referrer:
 			finishedFiles++
 			onProgress({ filesInProgress: downloadingFiles, finishedFiles })
 		}
-	}, 4)
+	}, 6)
 }

@@ -1,16 +1,17 @@
 package server
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
 	"path"
+	"text/template"
 	"time"
 
 	"github.com/Entrivax/extractor/extractor/internal/backup"
@@ -20,33 +21,66 @@ import (
 type Server struct {
 	handles map[string]*backup.BackupHandle
 	saveFs  backup.WFS
+
+	folderTemplate *template.Template
+	useHTTPS       bool
+	certFile       string
+	keyFile        string
 }
 
-func NewServer(savePath string) *Server {
+func NewServer(savePath string, folderTemplate string) *Server {
 	saveFs := backup.NewOsDirFS(savePath)
+	templ := template.Must(template.New("folderTemplate").Parse(folderTemplate))
 	return &Server{
-		handles: make(map[string]*backup.BackupHandle),
-		saveFs:  saveFs,
+		handles:        make(map[string]*backup.BackupHandle),
+		saveFs:         saveFs,
+		folderTemplate: templ,
 	}
 }
 
-var addr = flag.String("addr", ":7766", "http service address")
+func (s *Server) WithHTTPS(certFile, keyFile string) *Server {
+	s.useHTTPS = true
+	s.certFile = certFile
+	s.keyFile = keyFile
+	return s
+}
 
-func (s *Server) Listen() error {
+func (s *Server) Listen(addr string) error {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /", s.handleHome)
 	mux.HandleFunc("POST /create-backup", s.handleCreateBackup)
 	mux.HandleFunc("POST /backup/{id}/file", s.handleUploadFile)
 	mux.HandleFunc("POST /backup/{id}/copy-file", s.handleCopyFile)
 	mux.HandleFunc("POST /backup/{id}/append-from-url", s.handleAppendFileFromUrl)
 	mux.HandleFunc("POST /backup/{id}/download-with-yt-dl", s.handleDownloadWithYtDl)
 	mux.HandleFunc("POST /backup/{id}/close", s.handleCloseBackup)
-	return http.ListenAndServe(*addr, mux)
+
+	logging.InfoLog.Printf("Starting server on %s", addr)
+	if !s.useHTTPS {
+		return http.ListenAndServe(addr, mux)
+	}
+	logging.InfoLog.Printf("Using HTTPS with cert: %s and key: %s", s.certFile, s.keyFile)
+	return http.ListenAndServeTLS(addr, s.certFile, s.keyFile, mux)
+}
+
+func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Extractor Backup Server is running"))
 }
 
 func (s *Server) handleCreateBackup(w http.ResponseWriter, r *http.Request) {
 	key := generateId()
-	date := time.Now().Format("2006-01-02_15-04-05")
-	backupLocation := fmt.Sprintf("backup_%s_%s", date, key)
+	date := time.Now()
+	timestamp := date.Format("2006-01-02_15-04-05")
+	buf := new(bytes.Buffer)
+	s.folderTemplate.Execute(buf, map[string]any{
+		"Extractor":     r.PostFormValue("extractor"),
+		"CreatorId":     r.PostFormValue("creator_id"),
+		"CreatorVanity": r.PostFormValue("creator_vanity"),
+		"Timestamp":     timestamp,
+		"Date":          date,
+		"RandomId":      key,
+	})
+	backupLocation := buf.String()
 	logging.InfoLog.Printf("Creating new backup at %s", backupLocation)
 
 	var previousBackupFs fs.FS = nil
