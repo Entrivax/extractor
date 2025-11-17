@@ -62,6 +62,7 @@ func main() {
 	configuration := &Configuration{}
 	setConfig(configuration)
 	srv := server.NewServer(configuration.SavePath, configuration.BackupFolderTemplate)
+	srv.StartWorkers(6, 1)
 	if configuration.UseHTTPS {
 		certFile := configuration.CertFile
 		keyFile := configuration.KeyFile

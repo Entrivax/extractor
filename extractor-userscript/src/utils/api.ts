@@ -68,13 +68,30 @@ export class BackupApi {
 		)
 	}
 
-	async fetchPipe(url: string, onDownProgress: (downloaded: number, total: number) => void, referrer: string) {
+	async getJobs() {
+		const req = await makeRequest({
+			method: 'GET',
+			url: `${this.apiUrl}/backup/${this.backupId}/jobs`,
+			responseType: 'json',
+		})
+		return req.response as {
+			http_jobs_pending: number
+			yt_dl_jobs_pending: number
+			http_jobs_completed: number
+			yt_dl_jobs_completed: number
+		}
+	}
+
+	async fetchPipe(url: string, onDownProgress: (downloaded: number, total: number) => void, referer: string, urlPathRemaps: Record<string, string>) {
 		let attempt = 0
 
 		const copyResult = await makeRequest({
 			method: 'POST',
-			url: `${this.apiUrl}/backup/${this.backupId}/copy-file?path=${encodeURIComponent(this.toLocalPath(url))}`,
+			url: `${this.apiUrl}/backup/${this.backupId}/copy-file?path=${encodeURIComponent(this.toLocalPath(urlPathRemaps[url] || url))}`,
 			responseType: 'json',
+			headers: {
+				'Referer': referer,
+			},
 		})
 		if (copyResult.response.success === 'ok') {
 			return
@@ -134,34 +151,30 @@ export class BackupApi {
 		})
 	}
 
-	async appendFromUrl(url: string, referrer: string) {
-		const form = new FormData()
-		form.append('url', url)
-		form.append('path', this.toLocalPath(url))
+	async appendFromUrls(urls: string[], referer: string, urlPathRemaps: Record<string, string>) {
 		return makeRequest({
 			method: 'POST',
-			url: `${this.apiUrl}/backup/${this.backupId}/append-from-url`,
+			url: `${this.apiUrl}/backup/${this.backupId}/queue-urls`,
 			responseType: 'json',
 			headers: {
-				'Referrer': referrer,
+				'Referer': referer,
+				'Content-Type': 'application/json',
 			},
-			body: form,
+			body: JSON.stringify({ files: urls.map(url => ({ path: this.toLocalPath(urlPathRemaps[url] || url), url })) }),
 		})
 	}
 
-	async downloadWithYtDl(url: string, mediaId: string, referrer: string): Promise<string> {
-		const form = new FormData()
-		form.append('url', url)
-		form.append('mediaId', mediaId)
+	async downloadWithYtDl(urls: string[], referer: string, urlPathRemaps: Record<string, string>) {
 		return makeRequest({
 			method: 'POST',
-			url: `${this.apiUrl}/backup/${this.backupId}/download-with-yt-dl`,
+			url: `${this.apiUrl}/backup/${this.backupId}/queue-yt-dl`,
 			responseType: 'json',
 			headers: {
-				'Referrer': referrer,
+				'Referer': referer,
+				'Content-Type': 'application/json',
 			},
-			body: form,
-		}).then(res => res.response.file_path)
+			body: JSON.stringify({ files: urls.map(url => ({ path: this.toLocalPath(urlPathRemaps[url] || url), url })) }),
+		})
 	}
 
 	close() {

@@ -2,14 +2,14 @@ import { createRef } from 'preact';
 import { useLinks } from '../../../utils/strings.js';
 import { Banner } from '../../components/Banner.js';
 import { Cover } from '../../components/Cover.js';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 import { Posts } from '../../components/Posts.js';
 import { PostData } from '../../components/Post.js';
 import { useSearchParams } from 'react-router-dom';
 
 export function Home() {
 	const [searchParams] = useSearchParams()
-	const { cleanLink, getMediaLink, parseHtmlAndCleanLinks } = useLinks((searchParams.get('base') || null) as string | null)
+	const { cleanLink, parseHtmlAndCleanLinks } = useLinks((searchParams.get('base') || null) as string | null)
 	const [data, setData] = useState({
 		patreonData: (window as any).patreonData,
 		error: null as string | null
@@ -96,8 +96,11 @@ export function Home() {
 				if (metadatasMap[key].attributes.download_url) {
 					metadatasMap[key].attributes.download_url = cleanLink(metadatasMap[key].attributes.download_url)
 				}
-				if (typeof metadatasMap[key].attributes.display?.duration === 'number') {
-					metadatasMap[key].attributes.display.url = getMediaLink(metadatasMap[key].attributes.display.media_id)
+				if (metadatasMap[key].attributes.display?.url) {
+					metadatasMap[key].attributes.display.url = cleanLink(metadatasMap[key].attributes.display.url)
+				}
+				if (metadatasMap[key].attributes.display?.default_thumbnail?.url) {
+					metadatasMap[key].attributes.display.default_thumbnail.url = cleanLink(metadatasMap[key].attributes.display.default_thumbnail.url)
 				}
 			} else if (m.type === 'poll') {
 				const userResponses = metadatasMap[key].relationships.current_user_responses.data.map(resp => metadatasMap[resp.id])

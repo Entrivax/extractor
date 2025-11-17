@@ -1,4 +1,4 @@
-export function useLinks(base: string | null): { cleanLink: (link: string | null) => string | null, getMediaLink: (mediaId: number | null) => string | null, parseHtmlAndCleanLinks: (html: string | null) => string | null } {
+export function useLinks(base: string | null): { cleanLink: (link: string | null) => string | null, parseHtmlAndCleanLinks: (html: string | null) => string | null } {
 	const cleanLink = (link: string | null): string | null => {
 		if (typeof link !== "string") {
 			return null
@@ -16,12 +16,6 @@ export function useLinks(base: string | null): { cleanLink: (link: string | null
 	}
 	return {
 		cleanLink,
-		getMediaLink(mediaId: number | null): string | null {
-			if (!mediaId) {
-				return null
-			}
-			return `${base != null ? base : '.'}/media/${mediaId}.mp4`
-		},
 		parseHtmlAndCleanLinks(html: string | null): string | null {
 			if (html == null) {
 				return html

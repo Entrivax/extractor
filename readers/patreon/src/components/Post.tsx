@@ -80,6 +80,9 @@ export type VideoExternalData = {
 		display: {
 			duration: number;
 			url: string;
+			default_thumbnail: {
+				url: string;
+			}
 		}
 	};
 	metadata: {
@@ -109,7 +112,7 @@ export function Post({ post }: { post: PostData }) {
 						)
 					case 'video_external_file':
 						return (
-							<VideoItem videoUrl={post.attributes.videoExternal?.attributes.display.url} />
+							<VideoItem videoUrl={post.attributes.videoExternal?.attributes.display.url} posterUrl={post.attributes.videoExternal?.attributes.display.default_thumbnail?.url} />
 						)
 				}
 			})() }

@@ -5,12 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
-	"os/exec"
-	"path"
 	"text/template"
 	"time"
 
@@ -19,8 +16,10 @@ import (
 )
 
 type Server struct {
-	handles map[string]*backup.BackupHandle
-	saveFs  backup.WFS
+	handles  map[string]*backup.BackupHandle
+	saveFs   backup.WFS
+	httpJobs chan *backup.HttpJob
+	ytDlJobs chan *backup.YtDlJob
 
 	folderTemplate *template.Template
 	useHTTPS       bool
@@ -35,6 +34,8 @@ func NewServer(savePath string, folderTemplate string) *Server {
 		handles:        make(map[string]*backup.BackupHandle),
 		saveFs:         saveFs,
 		folderTemplate: templ,
+		httpJobs:       make(chan *backup.HttpJob, 10000),
+		ytDlJobs:       make(chan *backup.YtDlJob, 1000),
 	}
 }
 
@@ -45,14 +46,24 @@ func (s *Server) WithHTTPS(certFile, keyFile string) *Server {
 	return s
 }
 
+func (s *Server) StartWorkers(numHttpWorkers int, numYtDlWorkers int) {
+	for range numHttpWorkers {
+		go backup.HttpWorker(s.httpJobs)
+	}
+	for range numYtDlWorkers {
+		go backup.YtDlWorker(s.ytDlJobs)
+	}
+}
+
 func (s *Server) Listen(addr string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", s.handleHome)
 	mux.HandleFunc("POST /create-backup", s.handleCreateBackup)
+	mux.HandleFunc("GET /backup/{id}/jobs", s.handleJobs)
 	mux.HandleFunc("POST /backup/{id}/file", s.handleUploadFile)
 	mux.HandleFunc("POST /backup/{id}/copy-file", s.handleCopyFile)
-	mux.HandleFunc("POST /backup/{id}/append-from-url", s.handleAppendFileFromUrl)
-	mux.HandleFunc("POST /backup/{id}/download-with-yt-dl", s.handleDownloadWithYtDl)
+	mux.HandleFunc("POST /backup/{id}/queue-urls", s.handleQueueUrls)
+	mux.HandleFunc("POST /backup/{id}/queue-yt-dl", s.handleQueueYtDl)
 	mux.HandleFunc("POST /backup/{id}/close", s.handleCloseBackup)
 
 	logging.InfoLog.Printf("Starting server on %s", addr)
@@ -129,104 +140,110 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
-func (s *Server) handleAppendFileFromUrl(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	handle, exists := s.handles[id]
 	if !exists {
 		fuckOff(w, "Backup handle not found", nil, http.StatusNotFound)
 		return
 	}
-	filePath := r.FormValue("path")
-
-	// Try to copy from previous backup first, if not found, proceed to download
-	if handle.CopyFromPreviousBackup(filePath) {
-		return
-	}
-
-	userAgent := r.Header.Get("User-Agent")
-	referer := r.Header.Get("Referer")
-
-	req, err := http.NewRequest("GET", r.FormValue("url"), nil)
-	if err != nil {
-		fuckOff(w, "Failed to create request", err, http.StatusInternalServerError)
-		return
-	}
-	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("Referer", referer)
-
-	// Be gentle with target servers
-	time.Sleep(time.Millisecond * 250)
-
-	logging.InfoLog.Printf("Downloading file from URL: %s", r.FormValue("url"))
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		fuckOff(w, fmt.Sprintf("Failed to fetch URL: %s", r.FormValue("url")), err, http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
-
-	err = handle.PipeFile(filePath, resp.Body)
-	if err != nil {
-		fuckOff(w, "Failed to append file", err, http.StatusInternalServerError)
-		return
-	}
-
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	json.NewEncoder(w).Encode(map[string]any{
+		"http_jobs_pending":    len(handle.HttpJobs),
+		"yt_dl_jobs_pending":   len(handle.YtDlJobs),
+		"http_jobs_completed":  countCompletedJobs(handle.HttpJobs),
+		"yt_dl_jobs_completed": countCompletedJobs(handle.YtDlJobs),
+	})
 }
 
-func (s *Server) handleDownloadWithYtDl(w http.ResponseWriter, r *http.Request) {
+func countCompletedJobs[T interface{ IsDone() bool }](jobs []T) int {
+	count := 0
+	for _, job := range jobs {
+		if job.IsDone() {
+			count++
+		}
+	}
+	return count
+}
+
+type AppendFromUrlsRequest struct {
+	Files []struct {
+		Path string `json:"path"`
+		Url  string `json:"url"`
+	} `json:"files"`
+}
+
+func (s *Server) handleQueueUrls(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	handle, exists := s.handles[id]
 	if !exists {
 		fuckOff(w, "Backup handle not found", nil, http.StatusNotFound)
 		return
 	}
-
-	tmpDir, err := os.MkdirTemp("", "yt-dlp-*")
+	userAgent := r.Header.Get("User-Agent")
+	referer := r.Header.Get("Referer")
+	var req AppendFromUrlsRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		fuckOff(w, "Failed to create temp dir", err, http.StatusInternalServerError)
+		fuckOff(w, "Failed to parse request body", err, http.StatusBadRequest)
 		return
 	}
-	defer os.RemoveAll(tmpDir)
+	defer r.Body.Close()
 
-	url := r.FormValue("url")
-	logging.InfoLog.Printf("Downloading file with yt-dlp from URL: %s", url)
-	outputTemplate := tmpDir + "/output.%(ext)s"
-	cmd := exec.Command(
-		"yt-dlp",
-		"--user-agent", r.Header.Get("User-Agent"),
-		"--referer", r.Header.Get("Referer"),
-		"-o", outputTemplate,
-		url,
-	)
-	err = cmd.Run()
+	jobs := make([]*backup.HttpJob, len(req.Files))
+	for i, file := range req.Files {
+		jobs[i] = &backup.HttpJob{
+			FilePath:     file.Path,
+			SourceUrl:    file.Url,
+			UserAgent:    userAgent,
+			Referer:      referer,
+			BackupHandle: handle,
+		}
+	}
+	handle.HttpJobs = append(handle.HttpJobs, jobs...)
+	go func() {
+		for _, job := range jobs {
+			s.httpJobs <- job
+		}
+	}()
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func (s *Server) handleQueueYtDl(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	handle, exists := s.handles[id]
+	if !exists {
+		fuckOff(w, "Backup handle not found", nil, http.StatusNotFound)
+		return
+	}
+	userAgent := r.Header.Get("User-Agent")
+	referer := r.Header.Get("Referer")
+	var req AppendFromUrlsRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		fuckOff(w, "yt-dlp failed", err, http.StatusInternalServerError)
+		fuckOff(w, "Failed to parse request body", err, http.StatusBadRequest)
 		return
 	}
+	defer r.Body.Close()
 
-	files, err := os.ReadDir(tmpDir)
-	if err != nil || len(files) == 0 {
-		fuckOff(w, "No files downloaded", err, http.StatusInternalServerError)
-		return
+	jobs := make([]*backup.YtDlJob, len(req.Files))
+	for i, file := range req.Files {
+		jobs[i] = &backup.YtDlJob{
+			FilePath:     file.Path,
+			SourceUrl:    file.Url,
+			UserAgent:    userAgent,
+			Referer:      referer,
+			BackupHandle: handle,
+		}
 	}
+	handle.YtDlJobs = append(handle.YtDlJobs, jobs...)
+	go func() {
+		for _, job := range jobs {
+			s.ytDlJobs <- job
+		}
+	}()
 
-	downloadedFilePath := path.Join(tmpDir, files[0].Name())
-	downloadedFile, err := os.Open(downloadedFilePath)
-	if err != nil {
-		fuckOff(w, "Failed to open downloaded file", err, http.StatusInternalServerError)
-		return
-	}
-	defer downloadedFile.Close()
-
-	filePath := path.Join("media", r.PostFormValue("media_id")+path.Ext(files[0].Name()))
-	err = handle.PipeFile(filePath, downloadedFile)
-	if err != nil {
-		fuckOff(w, "Failed to save downloaded file", err, http.StatusInternalServerError)
-		return
-	}
-
-	json.NewEncoder(w).Encode(map[string]string{"file_path": filePath})
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (s *Server) handleCloseBackup(w http.ResponseWriter, r *http.Request) {

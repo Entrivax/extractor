@@ -12,10 +12,17 @@ type BackupHandle struct {
 	fs             WFS
 	previousBackup fs.FS
 	openedFilesWg  sync.WaitGroup
+	HttpJobs       []*HttpJob
+	YtDlJobs       []*YtDlJob
 }
 
 func NewBackupHandle(backupsDir WFS, previousBackupFs fs.FS) *BackupHandle {
-	return &BackupHandle{fs: backupsDir, previousBackup: previousBackupFs}
+	return &BackupHandle{
+		fs:             backupsDir,
+		previousBackup: previousBackupFs,
+		HttpJobs:       []*HttpJob{},
+		YtDlJobs:       []*YtDlJob{},
+	}
 }
 
 // CopyFromPreviousBackup tries to copy the file at the given path from the previous backup.
