@@ -47,8 +47,8 @@ func appendFileFromUrl(job *HttpJob) error {
 		return nil
 	}
 
-	var resp *http.Response
 	for attempt := range 5 {
+		var resp *http.Response
 		req, err := http.NewRequest("GET", job.SourceUrl, nil)
 		retryLog := ""
 		if attempt > 0 {
@@ -71,16 +71,17 @@ func appendFileFromUrl(job *HttpJob) error {
 			time.Sleep(time.Second * 10 * time.Duration(attempt+1))
 			continue
 		}
+
+		defer resp.Body.Close()
+
+		err = handle.PipeFile(filePath, resp.Body)
+		if err != nil {
+			logging.ErrorLog.Printf("Failed to append file %s: %v", filePath, err)
+			continue
+		}
 		break
 	}
 
-	defer resp.Body.Close()
-
-	err := handle.PipeFile(filePath, resp.Body)
-	if err != nil {
-		logging.ErrorLog.Printf("Failed to append file %s: %v", filePath, err)
-		return err
-	}
 	return nil
 }
 
