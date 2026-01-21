@@ -13,7 +13,7 @@
     "archiver": "^5.0.2",
     "chalk": "^4.1.0",
     "cli-progress": "^3.8.2",
-    "lodash": "^4.17.20",
+    "lodash": "^4.17.21",
     "node-stream-zip": "^1.11.3",
     "yargs": "^15.4.1"
   }
